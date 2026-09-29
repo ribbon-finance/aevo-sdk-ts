@@ -1,0 +1,173 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify Node ${{ matrix.node-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - 18.x
+          - 20.x
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Verify tag and changelog
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          function fail(message) {
+            console.error(message);
+            process.exit(1);
+          }
+
+          function escapeRegExp(value) {
+            return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          }
+
+          const tag = process.env.GITHUB_REF_NAME;
+          const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+          const expectedTag = `v${pkg.version}`;
+          if (tag !== expectedTag) {
+            fail(`Release tag ${tag} does not match package.json version ${pkg.version}; expected ${expectedTag}.`);
+          }
+
+          const changelog = readFileSync("CHANGELOG.md", "utf8");
+          const section = new RegExp(`^## \\[${escapeRegExp(pkg.version)}\\](?:\\s+-\\s+.*)?$`, "m");
+          if (!section.test(changelog)) {
+            fail(`CHANGELOG.md is missing a section for ${pkg.version}.`);
+          }
+          NODE
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Coverage
+        run: npm run test:coverage
+
+      - name: Package dry run
+        run: npm pack --dry-run
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  publish:
+    name: Publish npm package
+    runs-on: ubuntu-latest
+    needs: verify
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify release license
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync } from "node:fs";
+
+          const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+          const license = typeof pkg.license === "string" ? pkg.license.trim() : "";
+          const blocked = license === "" || license.toUpperCase() === "UNLICENSED" || license.toUpperCase() === "TBD";
+          if (blocked) {
+            console.error(
+              `Refusing to publish ${pkg.name}: package.json license is ${license || "unset"}. Decide and set a valid license before release.`
+            );
+            process.exit(1);
+          }
+          NODE
+
+      - name: Publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  github-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: publish
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract changelog notes
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from "node:fs";
+
+          function fail(message) {
+            console.error(message);
+            process.exit(1);
+          }
+
+          function escapeRegExp(value) {
+            return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          }
+
+          const tag = process.env.GITHUB_REF_NAME;
+          const version = tag.replace(/^v/, "");
+          const lines = readFileSync("CHANGELOG.md", "utf8").split(/\r?\n/);
+          const heading = new RegExp(`^## \\[${escapeRegExp(version)}\\](?:\\s+-\\s+.*)?$`);
+          const start = lines.findIndex((line) => heading.test(line));
+          if (start === -1) {
+            fail(`CHANGELOG.md is missing a section for ${version}.`);
+          }
+          const next = lines.findIndex((line, index) => index > start && /^## \[/.test(line));
+          const end = next === -1 ? lines.length : next;
+          const notes = lines.slice(start + 1, end).join("\n").trim();
+          if (notes === "") {
+            fail(`CHANGELOG.md section for ${version} is empty.`);
+          }
+          writeFileSync("release-notes.md", `${notes}\n`);
+          NODE
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md

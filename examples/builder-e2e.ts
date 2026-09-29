@@ -23,6 +23,11 @@ const side = (process.env.SIDE ?? "buy").toLowerCase();
 const amountRaw = process.env.AMOUNT_RAW ?? toRaw6(process.env.AMOUNT ?? "0.01");
 const limitPriceRaw = process.env.LIMIT_PRICE_RAW ?? toRaw6(process.env.LIMIT_PRICE ?? "2500");
 const signingKeyDays = Number(process.env.SIGNING_KEY_DAYS ?? "30");
+const publicTestVectorKeys = new Set([
+  "0x5b74887f136946f14441ae2d6c23119fcf93f98221ada8e906b953b941020295",
+  "0xe3aed01a3fb8fa817607da5c385aa50904bf7ae47decef855e1fb66377e40ec2",
+  "0x395bda2c48ad973da2d5e80151c2f472f3729ac6f5aa5359edf759b9acbbed0a"
+]);
 
 if (side !== "buy" && side !== "sell") {
   throw new Error("SIDE must be buy or sell");
@@ -58,6 +63,10 @@ async function main() {
   console.log("\n3. Prepare fresh wallet and signing key");
   const freshWallet = new Wallet(process.env.FRESH_WALLET_KEY ?? Wallet.createRandom().privateKey);
   const signingWallet = new Wallet(process.env.FRESH_SIGNING_KEY ?? Wallet.createRandom().privateKey);
+  if (SEND) {
+    refusePublicTestVectorKey("FRESH_WALLET_KEY", freshWallet.privateKey);
+    refusePublicTestVectorKey("FRESH_SIGNING_KEY", signingWallet.privateKey);
+  }
   const expiry = Math.floor(Date.now() / 1000) + signingKeyDays * 24 * 60 * 60;
   console.log(`wallet=${freshWallet.address}`);
   console.log(`signing_key=${signingWallet.address}`);
@@ -194,6 +203,12 @@ function requiredEnv(name: string): string {
     throw new Error(`${name} is required`);
   }
   return value;
+}
+
+function refusePublicTestVectorKey(name: string, privateKey: string): void {
+  if (publicTestVectorKeys.has(privateKey.toLowerCase())) {
+    throw new Error(`${name} uses a public test-vector private key; SEND=1 requires a fresh key`);
+  }
 }
 
 main().catch((error) => {

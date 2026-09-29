@@ -18,6 +18,14 @@ npm run build
 npm test
 ```
 
+## Development
+
+CI runs the same package checks documented in [CONTRIBUTING.md](CONTRIBUTING.md): install, build, typecheck, tests, coverage thresholds, package dry-run, and production dependency audit. See [RELEASING.md](RELEASING.md) for the tag-driven release flow.
+
+## Versioning
+
+The SDK follows semver. While the package is `0.x`, minor versions may include breaking changes and patch versions are reserved for backwards-compatible fixes.
+
 ## Quick Start
 
 ```ts

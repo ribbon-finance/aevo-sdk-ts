@@ -2,7 +2,7 @@
   "name": "@aevo/sdk",
   "version": "0.1.0",
   "description": "Official TypeScript SDK for Aevo.",
-  "license": "TBD",
+  "license": "UNLICENSED",
   "private": false,
   "type": "module",
   "main": "./dist/index.cjs",

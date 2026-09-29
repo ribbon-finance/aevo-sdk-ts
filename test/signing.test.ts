@@ -13,6 +13,17 @@ import {
 type VectorKey = (typeof vectors.keys)[number];
 type Domain = (typeof vectors.domains)[number];
 
+const EXPECTED_DOMAINS = ["mainnet", "testnet"];
+const EXPECTED_VECTOR_KINDS = [
+  "approve_builder",
+  "order_builder",
+  "order_plain",
+  "register",
+  "sign_key",
+  "transfer",
+  "withdraw"
+];
+
 const keys = new Map<string, VectorKey>(vectors.keys.map((key) => [key.id, key]));
 
 function key(id: string): string {
@@ -37,6 +48,28 @@ function rawRateToDecimal(raw: string): string {
 function domainId(domain: Domain): "mainnet" | "testnet" {
   return domain.id as "mainnet" | "testnet";
 }
+
+describe("vector fixture shape", () => {
+  it("contains every expected vector kind for each signing domain", () => {
+    expect(vectors.domains.map((domain) => domain.id).sort()).toEqual(EXPECTED_DOMAINS);
+
+    for (const domain of vectors.domains) {
+      const domainVectors = domain.vectors as Record<string, unknown>;
+      expect(Object.keys(domainVectors).sort()).toEqual(EXPECTED_VECTOR_KINDS);
+
+      for (const kind of EXPECTED_VECTOR_KINDS) {
+        const bucket = domainVectors[kind];
+        expect(Array.isArray(bucket), `${domain.id}.${kind} must be an array`).toBe(true);
+        expect((bucket as unknown[]).length, `${domain.id}.${kind} must not be empty`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("contains both REST and websocket HMAC vectors", () => {
+    expect(vectors.hmac.rest.length).toBeGreaterThan(0);
+    expect(vectors.hmac.websocket.length).toBeGreaterThan(0);
+  });
+});
 
 describe("signing vectors", () => {
   for (const domain of vectors.domains) {
