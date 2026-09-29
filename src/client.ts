@@ -3,10 +3,10 @@ import type { AevoClientOptions } from "./config.js";
 import { environmentConfig } from "./config.js";
 import { generateHmacSignature, unixTimestampNanoseconds } from "./auth.js";
 import { AevoApiError, AevoValueError } from "./errors.js";
+import { createSignedOrderPayload as buildSignedOrderPayload } from "./orderPayload.js";
 import {
   makeSalt,
   signApproveBuilder,
-  signOrder,
   signRegister,
   signSignKey,
   signTransfer,
@@ -84,40 +84,6 @@ function bodyMessage(body: unknown, fallback: string): string {
     }
   }
   return fallback;
-}
-
-function snakeOrderPayload(params: CreateOrderParams, maker: string, signature: string): SignedOrderPayload {
-  const payload: SignedOrderPayload = {
-    instrument: params.instrument,
-    maker,
-    is_buy: params.isBuy,
-    amount: params.amount,
-    limit_price: params.limitPrice,
-    salt: params.salt ?? makeSalt(),
-    signature,
-    timestamp: params.timestamp ?? Math.floor(Date.now() / 1000).toString()
-  };
-  if (params.postOnly !== undefined) payload.post_only = params.postOnly;
-  if (params.reduceOnly !== undefined) payload.reduce_only = params.reduceOnly;
-  if (params.timeInForce !== undefined) payload.time_in_force = params.timeInForce;
-  if (params.mmp !== undefined) payload.mmp = params.mmp;
-  if (params.stop !== undefined) payload.stop = params.stop;
-  if (params.trigger !== undefined) payload.trigger = params.trigger;
-  if (params.closePosition !== undefined) payload.close_position = params.closePosition;
-  if (params.partialPosition !== undefined) payload.partial_position = params.partialPosition;
-  if (params.parentOrderId !== undefined) payload.parent_order_id = params.parentOrderId;
-  if (params.selfTradePrevention !== undefined) {
-    payload.self_trade_prevention = params.selfTradePrevention;
-  }
-  if (params.builder !== undefined) {
-    payload.builder_id = params.builder.builderId;
-    payload.builder_fee_rate = oneOfRateOrBps({
-      rate: params.builder.builderFeeRate,
-      bps: params.builder.builderFeeBps,
-      fieldName: "builderFee"
-    });
-  }
-  return payload;
 }
 
 export class AevoClient {
@@ -409,46 +375,7 @@ export class AevoClient {
   createSignedOrderPayload(params: CreateOrderParams): SignedOrderPayload {
     const signingKey = this.requireSigningKey();
     const maker = getAddress(params.maker ?? this.requireWalletAddress());
-    const salt = params.salt ?? makeSalt();
-    const timestamp = params.timestamp ?? Math.floor(Date.now() / 1000).toString();
-    const builderFeeRate =
-      params.builder === undefined
-        ? undefined
-        : oneOfRateOrBps({
-            rate: params.builder.builderFeeRate,
-            bps: params.builder.builderFeeBps,
-            fieldName: "builderFee"
-          });
-    const signed = signOrder(this.env, signingKey, {
-      maker,
-      isBuy: params.isBuy,
-      limitPrice: params.limitPrice,
-      amount: params.amount,
-      salt,
-      instrument: params.instrument,
-      timestamp,
-      ...(params.builder !== undefined
-        ? { builderId: params.builder.builderId, builderFeeRate: builderFeeRate as string }
-        : {})
-    });
-    return snakeOrderPayload(
-      {
-        ...params,
-        maker,
-        salt,
-        timestamp,
-        ...(params.builder !== undefined
-          ? {
-              builder: {
-                builderId: params.builder.builderId,
-                builderFeeRate: builderFeeRate as string
-              }
-            }
-          : {})
-      },
-      maker,
-      signed.signature
-    );
+    return buildSignedOrderPayload(this.env, signingKey, maker, params);
   }
 
   private async builderReport(report: string, params: BuilderReportParams | BuilderStatsParams) {

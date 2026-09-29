@@ -1,12 +1,13 @@
 import { EventEmitter } from "node:events";
+import { getAddress } from "ethers";
 import WebSocket from "ws";
 import type { AevoClientOptions, AuthMode } from "./config.js";
 import { environmentConfig } from "./config.js";
 import { generateHmacSignature, unixTimestampNanoseconds } from "./auth.js";
 import { AevoValueError } from "./errors.js";
-import { signOrder, walletAddress, makeSalt } from "./signing.js";
+import { createSignedOrderPayload as buildSignedOrderPayload } from "./orderPayload.js";
+import { walletAddress } from "./signing.js";
 import type { CreateOrderParams, SignedOrderPayload } from "./types.js";
-import { oneOfRateOrBps } from "./units.js";
 
 export type AevoWsOperation =
   | "status"
@@ -61,55 +62,6 @@ export interface AevoWebSocketClientOptions
 
 function compactJson(value: unknown): string {
   return JSON.stringify(value);
-}
-
-function payloadFromOrder(
-  env: AevoClientOptions["env"],
-  signingKey: string,
-  wallet: string,
-  params: CreateOrderParams
-): SignedOrderPayload {
-  const salt = params.salt ?? makeSalt();
-  const timestamp = params.timestamp ?? Math.floor(Date.now() / 1000).toString();
-  const builderFeeRate =
-    params.builder === undefined
-      ? undefined
-      : oneOfRateOrBps({
-          rate: params.builder.builderFeeRate,
-          bps: params.builder.builderFeeBps,
-          fieldName: "builderFee"
-        });
-  const signed = signOrder(env, signingKey, {
-    maker: params.maker ?? wallet,
-    isBuy: params.isBuy,
-    limitPrice: params.limitPrice,
-    amount: params.amount,
-    salt,
-    instrument: params.instrument,
-    timestamp,
-    ...(params.builder !== undefined
-      ? { builderId: params.builder.builderId, builderFeeRate: builderFeeRate as string }
-      : {})
-  });
-  const payload: SignedOrderPayload = {
-    instrument: params.instrument,
-    maker: params.maker ?? wallet,
-    is_buy: params.isBuy,
-    amount: params.amount,
-    limit_price: params.limitPrice,
-    salt,
-    signature: signed.signature,
-    timestamp,
-    ...(params.postOnly !== undefined ? { post_only: params.postOnly } : {}),
-    ...(params.reduceOnly !== undefined ? { reduce_only: params.reduceOnly } : {}),
-    ...(params.timeInForce !== undefined ? { time_in_force: params.timeInForce } : {}),
-    ...(params.mmp !== undefined ? { mmp: params.mmp } : {})
-  };
-  if (params.builder !== undefined) {
-    payload.builder_id = params.builder.builderId;
-    payload.builder_fee_rate = builderFeeRate as string;
-  }
-  return payload;
 }
 
 export class AevoWebSocketClient extends EventEmitter {
@@ -245,7 +197,8 @@ export class AevoWebSocketClient extends EventEmitter {
     if (wallet === undefined && params.maker === undefined) {
       throw new AevoValueError("MISSING_CREDENTIALS", "walletAddress or walletPrivateKey is required");
     }
-    return payloadFromOrder(this.env, signingKey, wallet ?? params.maker!, params);
+    const maker = getAddress(params.maker ?? wallet!);
+    return buildSignedOrderPayload(this.env, signingKey, maker, params);
   }
 
   private sendAuthed(request: AevoWsRequest): void {

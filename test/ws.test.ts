@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 import vectors from "./vectors/vectors.json";
 import {
+  AevoClient,
   AevoWebSocketClient,
   generateHmacSignature,
   type AevoWsMessage,
   type WebSocketLike
 } from "../src/index.js";
+
+interface FetchCall {
+  url: string;
+  init: RequestInit | undefined;
+}
 
 class MockSocket implements WebSocketLike {
   static instances: MockSocket[] = [];
@@ -42,10 +48,40 @@ function lastFrame(socket: MockSocket): Record<string, unknown> {
   return JSON.parse(socket.sent.at(-1)!) as Record<string, unknown>;
 }
 
+function jsonFetch(body: unknown = { ok: true }) {
+  const calls: FetchCall[] = [];
+  const fetch = async (input: string | URL, init?: RequestInit) => {
+    calls.push({ url: input.toString(), init });
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "content-type": "application/json" }
+    });
+  };
+  return { fetch, calls };
+}
+
+function parseBody(call: FetchCall): Record<string, unknown> {
+  return JSON.parse(String(call.init?.body)) as Record<string, unknown>;
+}
+
 const keyMap = new Map(vectors.keys.map((key) => [key.id, key]));
 const wallet = keyMap.get("wallet")!;
 const signingKey = keyMap.get("signing_key")!;
 const orderVector = vectors.domains[0]!.vectors.order_builder[0]!;
+const optionalOrderJsonKeys = [
+  "post_only",
+  "reduce_only",
+  "time_in_force",
+  "mmp",
+  "stop",
+  "trigger",
+  "close_position",
+  "partial_position",
+  "parent_order_id",
+  "self_trade_prevention",
+  "builder_id",
+  "builder_fee_rate"
+];
 
 describe("AevoWebSocketClient", () => {
   it("sends key/secret auth and subscribe frames", async () => {
@@ -207,5 +243,141 @@ describe("AevoWebSocketClient", () => {
       ["fills"],
       ["positions"]
     ]);
+  });
+
+  it("includes and omits optional order fields in create/edit frames", async () => {
+    MockSocket.instances = [];
+    const client = new AevoWebSocketClient({
+      env: "mainnet",
+      apiKey: "key",
+      apiSecret: "secret",
+      walletAddress: orderVector.api.maker,
+      signingKey: signingKey.private_key,
+      WebSocket: MockSocket
+    });
+    await client.connect();
+    const socket = MockSocket.instances[0]!;
+    const baseParams = {
+      instrument: orderVector.api.instrument,
+      isBuy: orderVector.api.is_buy,
+      limitPrice: orderVector.api.limit_price,
+      amount: orderVector.api.amount,
+      salt: orderVector.api.salt,
+      timestamp: orderVector.api.timestamp
+    };
+    const optionalJson = {
+      post_only: true,
+      reduce_only: true,
+      time_in_force: "IOC",
+      mmp: true,
+      stop: "STOP_LOSS",
+      trigger: "INDEX_PRICE",
+      close_position: true,
+      partial_position: true,
+      parent_order_id: "0xparent",
+      self_trade_prevention: "CANCEL_TAKER",
+      builder_id: orderVector.api.builder_id,
+      builder_fee_rate: orderVector.api.builder_fee_rate
+    };
+    const paramsWithOptionalFields = {
+      ...baseParams,
+      postOnly: optionalJson.post_only,
+      reduceOnly: optionalJson.reduce_only,
+      timeInForce: optionalJson.time_in_force,
+      mmp: optionalJson.mmp,
+      stop: optionalJson.stop,
+      trigger: optionalJson.trigger,
+      closePosition: optionalJson.close_position,
+      partialPosition: optionalJson.partial_position,
+      parentOrderId: optionalJson.parent_order_id,
+      selfTradePrevention: optionalJson.self_trade_prevention,
+      builder: {
+        builderId: optionalJson.builder_id,
+        builderFeeRate: optionalJson.builder_fee_rate
+      }
+    };
+
+    client.createOrder(paramsWithOptionalFields, 10);
+    expect(lastFrame(socket)).toMatchObject({
+      id: 10,
+      op: "create_order",
+      data: optionalJson
+    });
+
+    client.editOrder("0xold", paramsWithOptionalFields, 11);
+    expect(lastFrame(socket)).toMatchObject({
+      id: 11,
+      op: "edit_order",
+      data: { ...optionalJson, order_id: "0xold" }
+    });
+
+    client.createOrder(baseParams, 12);
+    const createData = lastFrame(socket).data as Record<string, unknown>;
+    for (const key of optionalOrderJsonKeys) {
+      expect(createData).not.toHaveProperty(key);
+    }
+
+    client.editOrder("0xold", baseParams, 13);
+    const editData = lastFrame(socket).data as Record<string, unknown>;
+    for (const key of optionalOrderJsonKeys) {
+      expect(editData).not.toHaveProperty(key);
+    }
+    expect(editData.order_id).toBe("0xold");
+  });
+
+  it("uses the same signed order payload for REST and websocket", async () => {
+    MockSocket.instances = [];
+    const { fetch, calls } = jsonFetch({ order_id: "0xorder" });
+    const restClient = new AevoClient({
+      env: "mainnet",
+      fetch,
+      baseUrl: "https://example.test",
+      apiKey: "key",
+      apiSecret: "secret",
+      walletAddress: orderVector.api.maker,
+      signingKey: signingKey.private_key
+    });
+    const wsClient = new AevoWebSocketClient({
+      env: "mainnet",
+      apiKey: "key",
+      apiSecret: "secret",
+      walletAddress: orderVector.api.maker,
+      signingKey: signingKey.private_key,
+      WebSocket: MockSocket
+    });
+    await wsClient.connect();
+    const socket = MockSocket.instances[0]!;
+    const params = {
+      instrument: orderVector.api.instrument,
+      isBuy: orderVector.api.is_buy,
+      limitPrice: orderVector.api.limit_price,
+      amount: orderVector.api.amount,
+      salt: orderVector.api.salt,
+      timestamp: orderVector.api.timestamp,
+      postOnly: true,
+      reduceOnly: true,
+      timeInForce: "IOC",
+      mmp: true,
+      stop: "STOP_LOSS",
+      trigger: "INDEX_PRICE",
+      closePosition: true,
+      partialPosition: true,
+      parentOrderId: "0xparent",
+      selfTradePrevention: "CANCEL_TAKER",
+      builder: {
+        builderId: orderVector.api.builder_id,
+        builderFeeRate: orderVector.api.builder_fee_rate
+      }
+    };
+
+    await restClient.createOrder(params);
+    wsClient.createOrder(params, 20);
+    expect(lastFrame(socket).data).toEqual(parseBody(calls[0]!));
+
+    await restClient.editOrder("0xold", params);
+    wsClient.editOrder("0xold", params, 21);
+    const editData = { ...(lastFrame(socket).data as Record<string, unknown>) };
+    delete editData.order_id;
+    expect(editData).toEqual(parseBody(calls[1]!));
   });
 });
