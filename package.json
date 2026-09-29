@@ -2,7 +2,7 @@
   "name": "@aevo/sdk",
   "version": "0.1.0",
   "description": "Official TypeScript SDK for Aevo.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": false,
   "type": "module",
   "main": "./dist/index.cjs",
@@ -17,7 +17,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
@@ -39,5 +40,6 @@
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "author": "Aevo"
 }

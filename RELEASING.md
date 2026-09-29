@@ -7,7 +7,7 @@ Releases are tag-driven. Do not publish manually.
 - Create the GitHub `release` environment and require reviewer approval.
 - Add `NPM_TOKEN` for publishing `@aevo/sdk` to the npm org `@aevo`.
 - Confirm npm org ownership and package access for `@aevo/sdk`.
-- Decide the package license before the first public publish. The workflow refuses to publish while `package.json` is `UNLICENSED`, `TBD`, or unset.
+- The package is MIT-licensed (Copyright (c) 2026 Aevo). The workflow refuses to publish if `package.json` `license` is ever unset, `UNLICENSED` or `TBD`.
 
 ## Release Steps
 

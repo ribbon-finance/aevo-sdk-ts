@@ -177,4 +177,4 @@ Known builder codes are exported as the `BuilderErrorCode` union, including `BUI
 
 ## License
 
-To be decided before the first release.
+MIT. Copyright (c) 2026 Aevo. See [LICENSE](LICENSE).
