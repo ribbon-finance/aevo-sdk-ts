@@ -28,3 +28,5 @@ npm audit --omit=dev --audit-level=high
 ## Vectors
 
 See [VECTORS.md](VECTORS.md) for the current vector file SHA-256, expected fixture shape, and regeneration source.
+
+- **Test against the server contract, not the SDK's own output.** Mocked HTTP/WebSocket tests must assert the exact routes and field names the exchange reads (exchange-backend `apps/api/router.go`, `apps/teller/handler.go`, `pkg/decoder/params.go`, e.g. `data.order_id` for websocket cancel/edit). A test that only round-trips the SDK's own frame builder does not count.
