@@ -1,0 +1,1194 @@
+{
+  "schema_version": "aevo-sdk-signing-vectors/v1",
+  "generated_by": "go run ./scripts/sdk-vectors",
+  "notes": {
+    "fixed_point_decimals": 6,
+    "units": [
+      "order limitPrice, order amount, withdraw amount, transfer amount, builderFeeRate, and approve-builder fee rates are raw 6-decimal fixed-point integers",
+      "order timestamp is Unix seconds",
+      "approve-builder nonce is Unix milliseconds",
+      "REST and websocket auth timestamps are Unix nanoseconds encoded as decimal strings"
+    ],
+    "signature_format": "EIP-712 signatures are 65 bytes encoded as hex with 0x prefix in r||s||v order; signing.Sign normalizes v to 27 or 28.",
+    "signing_roles": [
+      "wallet signs Register, ApproveBuilder, Withdraw, and Transfer",
+      "signing_key and other_signing_key sign Order and SignKey vectors"
+    ],
+    "backend_quirks": [
+      "domains are explicit in this file and do not depend on EXCHANGE_ENV",
+      "Register verification accepts both Register(address key,uint256 expiry) and the legacy hashed-key Register(bytes32 key,uint256 expiry) variant",
+      "Register, Withdraw, and Transfer verification uses VerifyPersonalSignature, so the backend accepts either the direct EIP-712 digest signature or a personal_sign signature over the 32-byte EIP-712 digest",
+      "Withdraw message data is bytes32 keccak256(raw data); empty raw data uses keccak256(\"\")",
+      "REST HMAC validation signs r.URL.Path only; the query string is not included in the canonical string",
+      "websocket signed auth uses method \"ws\" and signs the operation name as the path"
+    ]
+  },
+  "keys": [
+    {
+      "id": "wallet",
+      "seed": "keccak256(\"aevo-sdk-vector-wallet\")",
+      "private_key": "0x5b74887f136946f14441ae2d6c23119fcf93f98221ada8e906b953b941020295",
+      "address": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27"
+    },
+    {
+      "id": "signing_key",
+      "seed": "keccak256(\"aevo-sdk-vector-signing-key\")",
+      "private_key": "0xe3aed01a3fb8fa817607da5c385aa50904bf7ae47decef855e1fb66377e40ec2",
+      "address": "0x4919a51986CA4036066645799580f2655ED50C63"
+    },
+    {
+      "id": "other_signing_key",
+      "seed": "keccak256(\"aevo-sdk-vector-other\")",
+      "private_key": "0x395bda2c48ad973da2d5e80151c2f472f3729ac6f5aa5359edf759b9acbbed0a",
+      "address": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF"
+    }
+  ],
+  "domains": [
+    {
+      "id": "mainnet",
+      "name": "Aevo Mainnet",
+      "version": "1",
+      "chain_id": "1",
+      "domain_type": "EIP712Domain(string name,string version,uint256 chainId)",
+      "domain_type_hash": "0xc2f8787176b8ac6bf7215b4adcc1e069bf4ab82d9ab1df05a57a91d425935b6e",
+      "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+      "vectors": {
+        "order_plain": [
+          {
+            "id": "plain_buy_6dp",
+            "description": "buy order with 6-decimal price and amount",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": true,
+              "limit_price": "1942123456",
+              "amount": "3210987",
+              "salt": "101",
+              "instrument": "1",
+              "timestamp": "1700000000"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "true",
+              "limitPrice": "1942123456",
+              "amount": "3210987",
+              "salt": "101",
+              "instrument": "1",
+              "timestamp": "1700000000"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp)",
+              "type_hash": "0x4541d7d3946046b6a386e51fa6fada6ebfcd2aa847235437708916fe4c3df82b",
+              "struct_hash": "0x466f5f8594c4d9ce2f221979810c9c6b8332bfecbbfa8c970ae286c359c8bdb2",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0x18ae8690b6b6e024b2184bd043eef7ba97f7bf17be5718dc0533aedc19e0db1e"
+            },
+            "signature": "0xe56e38b5f35bc87132fd7131faeb806e4264d5d0ee71a4f014f3838cf768a95f31546d8aa9dbd54e7af9f949dfe58265589b176d23fbfbfe6a05b00f57d5c94c1b",
+            "v": 27
+          },
+          {
+            "id": "plain_sell_min_price_max_salt",
+            "description": "sell order with minimum non-zero 6-decimal price and max uint256 salt",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": false,
+              "limit_price": "1",
+              "amount": "999999999999999",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+              "instrument": "42",
+              "timestamp": "1893456000"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "false",
+              "limitPrice": "1",
+              "amount": "999999999999999",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+              "instrument": "42",
+              "timestamp": "1893456000"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp)",
+              "type_hash": "0x4541d7d3946046b6a386e51fa6fada6ebfcd2aa847235437708916fe4c3df82b",
+              "struct_hash": "0x62e005706ffae18f28e3e48f117e16380696b135505ffdee16dda03ce1fc4bd7",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0x6118ff2d5e6831a5961f800a1fee516e7ad891e3cd67d433f7f5254f49fc292a"
+            },
+            "signature": "0xe0c478f9ca4b87aab0e9d70cf9187697e397ac1a89a62e865999fb179c1644b22754ca5e06333f75a611d3a7586bbbb0257bca070fd1826477707223ec3795291c",
+            "v": 28
+          },
+          {
+            "id": "plain_buy_zero_values",
+            "description": "buy order with zero price, zero salt, instrument 0, and Unix timestamp 0",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": true,
+              "limit_price": "0",
+              "amount": "1",
+              "salt": "0",
+              "instrument": "0",
+              "timestamp": "0"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "true",
+              "limitPrice": "0",
+              "amount": "1",
+              "salt": "0",
+              "instrument": "0",
+              "timestamp": "0"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp)",
+              "type_hash": "0x4541d7d3946046b6a386e51fa6fada6ebfcd2aa847235437708916fe4c3df82b",
+              "struct_hash": "0xcc86f8bafd6917f591563836c8665ff41568aacde146cec716239a4ca6ceacd7",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0x4ab0c524f7df3a202b6b807e3eef199eaef53147c49de2eca425c2e183964836"
+            },
+            "signature": "0xbe7890fb45d829527ec24383ea341514fd639cfd20db0da94eee8eb39993d343203993d9b37e0730382e2e33a7caab32cc126e48b37421625000eb52a325fc0e1c",
+            "v": 28
+          }
+        ],
+        "order_builder": [
+          {
+            "id": "builder_buy_fee_0003",
+            "description": "builder-attributed buy order with 0.0003 builder fee rate",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": true,
+              "limit_price": "2050654321",
+              "amount": "12345678",
+              "salt": "202",
+              "instrument": "1001",
+              "timestamp": "1704067200",
+              "builder_id": "builder-alpha",
+              "builder_fee_rate": "0.0003"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "true",
+              "limitPrice": "2050654321",
+              "amount": "12345678",
+              "salt": "202",
+              "instrument": "1001",
+              "timestamp": "1704067200",
+              "builderId": "builder-alpha",
+              "builderFeeRate": "300"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp,string builderId,uint256 builderFeeRate)",
+              "type_hash": "0xf4112f2e6b86d09e473433c04d479c336b76721f5ab9de9f36c509eb3bd0ce02",
+              "struct_hash": "0xd32fbe3234b96e4f36c4803f60d41ddbf9666efcad4c6b5a5434d0350f9cbe2c",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0x2d4de4fb1dd0c2bb9f0f7d5c098ccaa0b8bad3e09481829040f73bc833ef5ea4"
+            },
+            "signature": "0x1dd6d0728af89d81606c230ef23bf2cecd25b1e40547d38bee2beb6cd5655aec3b63d5e8d738edd5913d62519ef3b5dc237ec096a2f064df0feb25f4238da84e1c",
+            "v": 28
+          },
+          {
+            "id": "builder_sell_zero_fee",
+            "description": "builder-attributed sell order with explicit zero fee rate",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": false,
+              "limit_price": "1",
+              "amount": "1000000",
+              "salt": "0",
+              "instrument": "1002",
+              "timestamp": "1706745600",
+              "builder_id": "builder-zero",
+              "builder_fee_rate": "0"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "false",
+              "limitPrice": "1",
+              "amount": "1000000",
+              "salt": "0",
+              "instrument": "1002",
+              "timestamp": "1706745600",
+              "builderId": "builder-zero",
+              "builderFeeRate": "0"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp,string builderId,uint256 builderFeeRate)",
+              "type_hash": "0xf4112f2e6b86d09e473433c04d479c336b76721f5ab9de9f36c509eb3bd0ce02",
+              "struct_hash": "0x81ec017996c0512241ce7e05da65801a01ddfd6a54974032b4726df57f97f172",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0xc2182327a0a7b4eb9829d68368b67f0847caaa41022abc6c095e1a72dbbe018d"
+            },
+            "signature": "0x9fc0fccbc941fc4125cce51277a0f723baa33845b481be854fcead1903d5f5c75e3648fa9ef3f3bd9574db53908eee5defdc7156890ccf1c0fd0b8931613cf851b",
+            "v": 27
+          },
+          {
+            "id": "builder_other_key_large_amount",
+            "description": "builder order signed by the alternate signing key with large amount",
+            "signer_key": "other_signing_key",
+            "signer": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": true,
+              "limit_price": "123456000001",
+              "amount": "123456789123456",
+              "salt": "303",
+              "instrument": "65535",
+              "timestamp": "1711929600",
+              "builder_id": "builder-beta",
+              "builder_fee_rate": "1"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "true",
+              "limitPrice": "123456000001",
+              "amount": "123456789123456",
+              "salt": "303",
+              "instrument": "65535",
+              "timestamp": "1711929600",
+              "builderId": "builder-beta",
+              "builderFeeRate": "1000000"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp,string builderId,uint256 builderFeeRate)",
+              "type_hash": "0xf4112f2e6b86d09e473433c04d479c336b76721f5ab9de9f36c509eb3bd0ce02",
+              "struct_hash": "0x85d84decd430ce48c415e7db2a7086b8a5fa5c7335089e5fc521567c07a33235",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0xb13f7af4a1e4912ffc3ea042c14bc9846fcff3e0af1b63723d1fd5ad8c902a5d"
+            },
+            "signature": "0x0ad349d1bb0ed3b38ef1afecce9a4084f13db062b4f618ceee666d4f40ec4b5929cf542b3436bcfe401b3dedd015cf238733cc139b031baa356da603e58ec1501b",
+            "v": 27
+          }
+        ],
+        "register": [
+          {
+            "id": "register_signing_key_max_expiry",
+            "description": "Register(address key,uint256 expiry) for signing_key with max uint256 expiry",
+            "variant": "address_key",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "key_address": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "message": {
+              "key": "0x4919a51986CA4036066645799580f2655ED50C63",
+              "expiry": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+            },
+            "eip712": {
+              "primary_type": "Register",
+              "type_string": "Register(address key,uint256 expiry)",
+              "type_hash": "0x157ed7c01ed70a003867bde55d54d8bbb312f5a6b7d4333b35aaec1e24c76be9",
+              "struct_hash": "0xaa8dd3e3a1697d1962392d89a83caa47af5a0690fb49478a4202c9484832b8ac",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0xb999296981dd582c9b767239b770fef3af8a779ea61b93e1abc81a96f6ca7d07"
+            },
+            "personal_sign_digest": "0x6974b7c5dc2ff942d08b85285e24512086e7602b15ea20ed7aaf18bc69d07b1d",
+            "signature": "0x72e77cea748d410344621a09c779eb02ec8e05b1dd963e2ea71a12076bbc6b6d74e6da86c6c899c92452984e841048fcf065da0cd799f7b6da1845c1e0f076f51c",
+            "personal_signature": "0x6f38c26471ca81c22676c9e75ad9f4aeefed73dc746976810b29c3c1bcaab9a8524e505463afddda736c8ce9b1228b9c14b5da1f4508c75d43e7c89d5d64925c1b",
+            "v": 28
+          },
+          {
+            "id": "register_other_key_unix_expiry",
+            "description": "Register(address key,uint256 expiry) for alternate signing key with Unix-seconds expiry",
+            "variant": "address_key",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "key_address": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+            "message": {
+              "key": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "expiry": "1893456000"
+            },
+            "eip712": {
+              "primary_type": "Register",
+              "type_string": "Register(address key,uint256 expiry)",
+              "type_hash": "0x157ed7c01ed70a003867bde55d54d8bbb312f5a6b7d4333b35aaec1e24c76be9",
+              "struct_hash": "0x88736f28d8b2ff6956d1539f6e9d5164c37b45ace476f9abb46bde2db6755bdb",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0x14e315336e61da6bc79544e19da9ed7c33548acff1a334b28eadb84a1a49423c"
+            },
+            "personal_sign_digest": "0xcb3ba21a1ae449e21c51e91de0134532fb8df3464d3c017d58ed30c0cdcd6012",
+            "signature": "0x1c803c515d26c96be3ab0e8f564663959a624c2d58cfc5eb8e7200961c03f00a4e9249e967ec597194d58fa8bc8665eb18a0e25ef02157ecb295b215af0558951c",
+            "personal_signature": "0x1de796781486d2921e641a944324626c8a1559ac4e85ff98a35593cdcda56b9360f60e039101215a81012c19c980b067528206c88246cd5c51fef8c6e7ad5a111c",
+            "v": 28
+          },
+          {
+            "id": "register_hashed_signing_key_unix_expiry",
+            "description": "legacy Register(bytes32 key,uint256 expiry) hashed-key variant",
+            "variant": "hashed_key",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "key_address": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "message": {
+              "key": "0x5ae9a32515e45403cc0fa7ea4781a3bb65c5dcc91bd16cbca8f635fd0a4dc021",
+              "expiry": "1893456000"
+            },
+            "eip712": {
+              "primary_type": "Register",
+              "type_string": "Register(bytes32 key,uint256 expiry)",
+              "type_hash": "0x43a8e81b3066f27fa29dabd007adc6851d6194353ec874cb462cf965ed0c4d15",
+              "struct_hash": "0x57672e5c072d93fc1181dc9f6a86d465c44d6fbf4e196690ea1331c664ca52b5",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0x75b84c9ed10c6b4a071a660b1e5c33ed37dc9d8a5959eef74f983c7ac06edfc1"
+            },
+            "personal_sign_digest": "0x4b518cc0a9990017851b03f15d85374609cd52007571f8346b5a464fcec8e398",
+            "signature": "0xd943ecaa4c342e0f77d07511f23af2bf290c101986caad1b8a4689ba3fc4a3730c7f51f40dea1720d49395f27ef76a5ccee5cb5d4dc988cf9815e77f1e248be61c",
+            "personal_signature": "0x2e68a22a3ae5651715123135a12092fb8a0e36e829e44b0dae7c0491ea8ebc674be07b825653d761f9429f35739f8bc1694e491a1ed31508102c8dc55d497fc71b",
+            "v": 28
+          }
+        ],
+        "sign_key": [
+          {
+            "id": "sign_key_wallet_account",
+            "description": "signing_key proves it can sign for the wallet account",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "message": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27"
+            },
+            "eip712": {
+              "primary_type": "SignKey",
+              "type_string": "SignKey(address account)",
+              "type_hash": "0x2ff9e607f7eb3ff4057084887a1e540f46f1a773c72f756e09451eaf455c34fd",
+              "struct_hash": "0xd7029e13505bd0bccbe6f0b47f04eef31d1b9c52ba3d4ae5f6a19fdea310ab8b",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0xc247a6fa443bb34e7eb497527b4855c24e0705748872068711745d4135b003e8"
+            },
+            "signature": "0x39aa083ecd766fb77784681172b4706e1b50c177e7da5043425312000225b6d52889863d148b3b518f6483f4f543fdfe41b10f12901f78d156b4e93d20ed42041c",
+            "v": 28
+          },
+          {
+            "id": "other_sign_key_wallet_account",
+            "description": "alternate signing key proves it can sign for the wallet account",
+            "signer_key": "other_signing_key",
+            "signer": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+            "message": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27"
+            },
+            "eip712": {
+              "primary_type": "SignKey",
+              "type_string": "SignKey(address account)",
+              "type_hash": "0x2ff9e607f7eb3ff4057084887a1e540f46f1a773c72f756e09451eaf455c34fd",
+              "struct_hash": "0xd7029e13505bd0bccbe6f0b47f04eef31d1b9c52ba3d4ae5f6a19fdea310ab8b",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0xc247a6fa443bb34e7eb497527b4855c24e0705748872068711745d4135b003e8"
+            },
+            "signature": "0xdc579de51af57dbda6d345dd38f736cba10d9fff87b7751a0ba9c1647abacf4966a74fd78659adb372a531fb16f554803f7e924ab50d4194de32699f2a87f4161b",
+            "v": 27
+          }
+        ],
+        "approve_builder": [
+          {
+            "id": "approve_builder_fee_0003",
+            "description": "approve builder-alpha with max fee rate 0.0003",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "message": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "builderId": "builder-alpha",
+              "maxFeeRate": "300",
+              "nonce": "1700000000123"
+            },
+            "eip712": {
+              "primary_type": "ApproveBuilder",
+              "type_string": "ApproveBuilder(address account,string builderId,uint256 maxFeeRate,uint256 nonce)",
+              "type_hash": "0x70abe623a64971179764f5f6610433e26b8f72e0c6d17a8a680ac914895487ec",
+              "struct_hash": "0xa69198273284e0f1ba60f9ed5eef8c1701680f25c52c7a82683579bf954e10dd",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0xc44a8c0d935422fb8112d6eaa09d4253675c8a8f1d6a4e4720fb139c6aef392e"
+            },
+            "signature": "0x4cc5d8b188db77f23f93396c86a4c8058ddce2d25460c1875a0fe1496f25decf30f513c9a195041ce19a16e427fa2a8c5e48214d4b28c0a49f6bc98a1664c9221b",
+            "v": 27
+          },
+          {
+            "id": "approve_builder_zero_fee",
+            "description": "approve builder-zero with explicit zero max fee rate and zero nonce",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "message": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "builderId": "builder-zero",
+              "maxFeeRate": "0",
+              "nonce": "0"
+            },
+            "eip712": {
+              "primary_type": "ApproveBuilder",
+              "type_string": "ApproveBuilder(address account,string builderId,uint256 maxFeeRate,uint256 nonce)",
+              "type_hash": "0x70abe623a64971179764f5f6610433e26b8f72e0c6d17a8a680ac914895487ec",
+              "struct_hash": "0xfc869a24bfc8682d0798cb1593e4745760e44947d43b8fa3f1b4782d7ebd5dcc",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0xf9c6f530dd3d705112ad950ded88017417fa3b9a56ea82d2003b59974e93d543"
+            },
+            "signature": "0x9d3076cbd635981a31090592bd1e050b02fce8723adea1a46b378917fe109eb5371b49b215e998b710c1296468634f4ec55ddef53eee726cc8cf28bc38d2e6561b",
+            "v": 27
+          }
+        ],
+        "withdraw": [
+          {
+            "id": "withdraw_empty_data",
+            "description": "withdraw with empty raw data, which hashes to keccak256(\"\")",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "api": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "100000001",
+              "salt": "404",
+              "data": ""
+            },
+            "message": {
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "100000001",
+              "salt": "404",
+              "data": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+            },
+            "eip712": {
+              "primary_type": "Withdraw",
+              "type_string": "Withdraw(address collateral,address to,uint256 amount,uint256 salt,bytes32 data)",
+              "type_hash": "0x6dc4b9db376b4ac683b1d5f78bbed02b58ae61997e651ea0bc8885cb2e464788",
+              "struct_hash": "0xa37998e004ea07be259bb2a26c1ad0a6c9d42cae5f90648226a9d5f01400c117",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0xc06b9bd30528fdbc2ed048dca2e3caa5f687aa9a56db6ea764642918870cf419"
+            },
+            "personal_sign_digest": "0x970713adc54c915ae47834b30061776290e2e20ec2b84a5054cedbeaaaf24c5d",
+            "signature": "0x71f9fcb610a82b3ab4c14014b0a071a2f9c7913e7a214368d1ec7de5013cfde1576b8928c03eacf09b26ab17a53596bb48ff699a644f729cbf67e400a61df7241b",
+            "personal_signature": "0xf7a16f0d3a9faa538382d9da617dcab9a7750322fee11b4ec3bcc17503bd569f077909429cb1b4070ab0d2ca0ec13031d7a51417a9aa96224350e0018408c7721b",
+            "v": 27
+          },
+          {
+            "id": "withdraw_recipient_data_max_salt",
+            "description": "withdraw with ABI-encoded recipient data and max uint256 salt",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "api": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "250000123456",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+              "data": "0000000000000000000000004919a51986ca4036066645799580f2655ed50c63",
+              "recipient": "0x4919a51986CA4036066645799580f2655ED50C63"
+            },
+            "message": {
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "250000123456",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+              "data": "0x9fafa1e3655c33614d606a2f545dfe70cf08127995c39a134a742c5397617ff9"
+            },
+            "eip712": {
+              "primary_type": "Withdraw",
+              "type_string": "Withdraw(address collateral,address to,uint256 amount,uint256 salt,bytes32 data)",
+              "type_hash": "0x6dc4b9db376b4ac683b1d5f78bbed02b58ae61997e651ea0bc8885cb2e464788",
+              "struct_hash": "0x2b011c3e27ac769cdc44f110266ca78689bdbc2c9d533f2d00b7f2b2ad48e5bd",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0x7e9a3e60a49c311e68910409dafd1fef300ffabc76fe977193cdb39a2dcf0801"
+            },
+            "personal_sign_digest": "0xb127a7411b08603dddf0076fdd140d255a58b280cb384c079033ec47a16294fe",
+            "signature": "0x7bbfeaff2fbd3d0413ad08d74d4a4f2c79d81f617cff4ed2a9f5bac14364bd3d0c7287823cb80111a77c1659b4996377e83732c7061170eab2e42163cd7dde461b",
+            "personal_signature": "0x27df2d81b2a4a887df4ee1334d3438c0f2d1a4c06878d599ce494d01f014feb202d28b996bf5ee4fd01d10c9a03c40b1beedd63d71cf7b60f9a479f32f4832ed1c",
+            "v": 27
+          }
+        ],
+        "transfer": [
+          {
+            "id": "transfer_min_amount_zero_salt",
+            "description": "transfer with minimum non-zero 6-decimal amount and zero salt",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "api": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "1",
+              "salt": "0"
+            },
+            "message": {
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "1",
+              "salt": "0"
+            },
+            "eip712": {
+              "primary_type": "Transfer",
+              "type_string": "Transfer(address collateral,address to,uint256 amount,uint256 salt)",
+              "type_hash": "0xd917d91d369273eac4001f45349a5dbbd7d52c20c69862c6c4e83752d03d73d9",
+              "struct_hash": "0x3e6d5ae86bdc7751331c8b70969044103b0cce6e11c7ed314851450ddbac8236",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0x3426c58e026aeb3f049bd772e1a0f0ca69fa6d047103ed4fd761db5d23015926"
+            },
+            "personal_sign_digest": "0xb1703966a4397177f843127a09e677122978cb3798d0bf7e1c8f51d521d311b1",
+            "signature": "0x487e1ac4276b971a4687af48d374e947eac33e6309d4e8289606298a8b999b926506f181306fabb7cff807252d8497b12464c52ab1fda9b820fff57c46139b881b",
+            "personal_signature": "0x67695af5cb5cb3247dde790f2e1fda210e45204cee95220fc93d1b499b724e442b9687abc30b1a13ae72065e6b3b7ccdd042d7408046dba611cb8dd722007e0c1b",
+            "v": 27
+          },
+          {
+            "id": "transfer_large_amount_max_salt",
+            "description": "transfer with large raw amount and max uint256 salt",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "api": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "987654321123456",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+            },
+            "message": {
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "987654321123456",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+            },
+            "eip712": {
+              "primary_type": "Transfer",
+              "type_string": "Transfer(address collateral,address to,uint256 amount,uint256 salt)",
+              "type_hash": "0xd917d91d369273eac4001f45349a5dbbd7d52c20c69862c6c4e83752d03d73d9",
+              "struct_hash": "0x090f3a907793aa1bf4085e1f0ba6410200371ac1c3651e6bf9742ba7bfe3eab0",
+              "domain_separator": "0xdf5276d0f8693a141ea4206e935faccce5030239f2d742038298b3d78658806d",
+              "digest": "0xa8162c8a60a93501446b9943f40b3d4cffce66db28ac16b1bf050f26f7606d38"
+            },
+            "personal_sign_digest": "0x700ffb8556c9bbd044320da8affa8b6034afc01110f6093fab190bdc916d594e",
+            "signature": "0xed837e884f5ba1d7064637402098d557fbc197c62636fbee8b198be031e1b4e153cb1ef93c07c6fac697b3a1fe9f206a37c911b7b11523734c76aba9e87906901c",
+            "personal_signature": "0x7460cd517ac6e8a8af050ddd22d278a1685de9cb717582b23ec8340649d789d20d9e69369d1df2b68fb651f9d4320893b07df03616b4f9585e98f5e0df45556f1c",
+            "v": 28
+          }
+        ]
+      }
+    },
+    {
+      "id": "testnet",
+      "name": "Aevo Testnet",
+      "version": "1",
+      "chain_id": "11155111",
+      "domain_type": "EIP712Domain(string name,string version,uint256 chainId)",
+      "domain_type_hash": "0xc2f8787176b8ac6bf7215b4adcc1e069bf4ab82d9ab1df05a57a91d425935b6e",
+      "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+      "vectors": {
+        "order_plain": [
+          {
+            "id": "plain_buy_6dp",
+            "description": "buy order with 6-decimal price and amount",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": true,
+              "limit_price": "1942123456",
+              "amount": "3210987",
+              "salt": "101",
+              "instrument": "1",
+              "timestamp": "1700000000"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "true",
+              "limitPrice": "1942123456",
+              "amount": "3210987",
+              "salt": "101",
+              "instrument": "1",
+              "timestamp": "1700000000"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp)",
+              "type_hash": "0x4541d7d3946046b6a386e51fa6fada6ebfcd2aa847235437708916fe4c3df82b",
+              "struct_hash": "0x466f5f8594c4d9ce2f221979810c9c6b8332bfecbbfa8c970ae286c359c8bdb2",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x46a849bd1e921b44eb345f3fbe56a614b35dc6eef2ba48050e532e1b9a5a2a1b"
+            },
+            "signature": "0x783f0e67d2c8e67cb082e7b61d4ccab44220a177f67ac47965c2226a3bbfba2a2638a1a59bc7e2fc7883d366f61e7f42c8535d0d16095eab180b72d53c7099a91c",
+            "v": 28
+          },
+          {
+            "id": "plain_sell_min_price_max_salt",
+            "description": "sell order with minimum non-zero 6-decimal price and max uint256 salt",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": false,
+              "limit_price": "1",
+              "amount": "999999999999999",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+              "instrument": "42",
+              "timestamp": "1893456000"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "false",
+              "limitPrice": "1",
+              "amount": "999999999999999",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+              "instrument": "42",
+              "timestamp": "1893456000"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp)",
+              "type_hash": "0x4541d7d3946046b6a386e51fa6fada6ebfcd2aa847235437708916fe4c3df82b",
+              "struct_hash": "0x62e005706ffae18f28e3e48f117e16380696b135505ffdee16dda03ce1fc4bd7",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x32a87b03a24f2f9b3baec1cd93801e2551980ab64cd4efeaa91b9cba63797320"
+            },
+            "signature": "0x35095d708f98e73f40904f1c034a7031b0142d3f187c8cb1bd8230b793e85b7333d4766f768f3098188c4886f45fa65dfda0c56de7f15468b313993a682d35e21c",
+            "v": 28
+          },
+          {
+            "id": "plain_buy_zero_values",
+            "description": "buy order with zero price, zero salt, instrument 0, and Unix timestamp 0",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": true,
+              "limit_price": "0",
+              "amount": "1",
+              "salt": "0",
+              "instrument": "0",
+              "timestamp": "0"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "true",
+              "limitPrice": "0",
+              "amount": "1",
+              "salt": "0",
+              "instrument": "0",
+              "timestamp": "0"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp)",
+              "type_hash": "0x4541d7d3946046b6a386e51fa6fada6ebfcd2aa847235437708916fe4c3df82b",
+              "struct_hash": "0xcc86f8bafd6917f591563836c8665ff41568aacde146cec716239a4ca6ceacd7",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x58ad5378fb18b6dfeba012b7faf1c11e10e24e3af98252a9cbcf297053fbc7d0"
+            },
+            "signature": "0x37c57a6f54e08040dc11c0217a881c7291060948afac50a1a32bf6f1129361d46b1846857e26d914b28d49d0d5080a6497295edd86991d05178221372cc325e11c",
+            "v": 28
+          }
+        ],
+        "order_builder": [
+          {
+            "id": "builder_buy_fee_0003",
+            "description": "builder-attributed buy order with 0.0003 builder fee rate",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": true,
+              "limit_price": "2050654321",
+              "amount": "12345678",
+              "salt": "202",
+              "instrument": "1001",
+              "timestamp": "1704067200",
+              "builder_id": "builder-alpha",
+              "builder_fee_rate": "0.0003"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "true",
+              "limitPrice": "2050654321",
+              "amount": "12345678",
+              "salt": "202",
+              "instrument": "1001",
+              "timestamp": "1704067200",
+              "builderId": "builder-alpha",
+              "builderFeeRate": "300"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp,string builderId,uint256 builderFeeRate)",
+              "type_hash": "0xf4112f2e6b86d09e473433c04d479c336b76721f5ab9de9f36c509eb3bd0ce02",
+              "struct_hash": "0xd32fbe3234b96e4f36c4803f60d41ddbf9666efcad4c6b5a5434d0350f9cbe2c",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x2c2f2ffd7574ace5624cbab4820bf64ad6f5ff5865dcd224f0242e3f416b07ad"
+            },
+            "signature": "0x3d88bc411e227ca7e41545a220ac644fc3879441eeb13318fef3fc47b255085565fe0e81c72272fb1dd94aa6f89ec44a7a8105b38b59b8fe4c5e8b8f23a2bcdb1b",
+            "v": 27
+          },
+          {
+            "id": "builder_sell_zero_fee",
+            "description": "builder-attributed sell order with explicit zero fee rate",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": false,
+              "limit_price": "1",
+              "amount": "1000000",
+              "salt": "0",
+              "instrument": "1002",
+              "timestamp": "1706745600",
+              "builder_id": "builder-zero",
+              "builder_fee_rate": "0"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "false",
+              "limitPrice": "1",
+              "amount": "1000000",
+              "salt": "0",
+              "instrument": "1002",
+              "timestamp": "1706745600",
+              "builderId": "builder-zero",
+              "builderFeeRate": "0"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp,string builderId,uint256 builderFeeRate)",
+              "type_hash": "0xf4112f2e6b86d09e473433c04d479c336b76721f5ab9de9f36c509eb3bd0ce02",
+              "struct_hash": "0x81ec017996c0512241ce7e05da65801a01ddfd6a54974032b4726df57f97f172",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x4fd3638d2f4da71bf238e979ba9151501544d860148562a52c25b9938ca089af"
+            },
+            "signature": "0x7ca997ac22ad25b9eac8d8ee31bb602e68b269af733c68840f8d6ca86aa60006250320e70e771f72fee8bc1c45efcb71df296af3d487c0ddb53843b40f7cbfe81c",
+            "v": 28
+          },
+          {
+            "id": "builder_other_key_large_amount",
+            "description": "builder order signed by the alternate signing key with large amount",
+            "signer_key": "other_signing_key",
+            "signer": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+            "api": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "is_buy": true,
+              "limit_price": "123456000001",
+              "amount": "123456789123456",
+              "salt": "303",
+              "instrument": "65535",
+              "timestamp": "1711929600",
+              "builder_id": "builder-beta",
+              "builder_fee_rate": "1"
+            },
+            "message": {
+              "maker": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "isBuy": "true",
+              "limitPrice": "123456000001",
+              "amount": "123456789123456",
+              "salt": "303",
+              "instrument": "65535",
+              "timestamp": "1711929600",
+              "builderId": "builder-beta",
+              "builderFeeRate": "1000000"
+            },
+            "eip712": {
+              "primary_type": "Order",
+              "type_string": "Order(address maker,bool isBuy,uint256 limitPrice,uint256 amount,uint256 salt,uint256 instrument,uint256 timestamp,string builderId,uint256 builderFeeRate)",
+              "type_hash": "0xf4112f2e6b86d09e473433c04d479c336b76721f5ab9de9f36c509eb3bd0ce02",
+              "struct_hash": "0x85d84decd430ce48c415e7db2a7086b8a5fa5c7335089e5fc521567c07a33235",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0xff4c4605bc93e5ce9654c00738758c8b567f7a64c5ab64cd940108fd853aeca4"
+            },
+            "signature": "0xb327141aa0bac1037589a95a6a3c9c8116d29fc77410bb53aab262e0e5fb46b24e93fcf14f0d39790f2ffa7290f158f8455f0a185359120c902dcafe0fa8a7721b",
+            "v": 27
+          }
+        ],
+        "register": [
+          {
+            "id": "register_signing_key_max_expiry",
+            "description": "Register(address key,uint256 expiry) for signing_key with max uint256 expiry",
+            "variant": "address_key",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "key_address": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "message": {
+              "key": "0x4919a51986CA4036066645799580f2655ED50C63",
+              "expiry": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+            },
+            "eip712": {
+              "primary_type": "Register",
+              "type_string": "Register(address key,uint256 expiry)",
+              "type_hash": "0x157ed7c01ed70a003867bde55d54d8bbb312f5a6b7d4333b35aaec1e24c76be9",
+              "struct_hash": "0xaa8dd3e3a1697d1962392d89a83caa47af5a0690fb49478a4202c9484832b8ac",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x37a706fb36e42f95f316df4667c9fa12e52ef242640400f160b9356ab8a77b4f"
+            },
+            "personal_sign_digest": "0x2d12bb274a128f372e07edb24bbb210aec05e81f7f4c2a5411c34cb0c181e770",
+            "signature": "0xc2a52d4fb1c310194612c659a9cb3debae207f714d11f7249a7e9b85657ee44e7c37cec245b604b7b1eefcb207ad80eec1bad97d6cad13fbeea36383b82177d91c",
+            "personal_signature": "0x05817e4598b24592fa170a7978a7c5673c75c079aa389381a1cdcb783f9c9ad33638963bb5265c5667de775bba2f7c434ba6013e68bc67d490d7c0c1fd751c2d1b",
+            "v": 28
+          },
+          {
+            "id": "register_other_key_unix_expiry",
+            "description": "Register(address key,uint256 expiry) for alternate signing key with Unix-seconds expiry",
+            "variant": "address_key",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "key_address": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+            "message": {
+              "key": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "expiry": "1893456000"
+            },
+            "eip712": {
+              "primary_type": "Register",
+              "type_string": "Register(address key,uint256 expiry)",
+              "type_hash": "0x157ed7c01ed70a003867bde55d54d8bbb312f5a6b7d4333b35aaec1e24c76be9",
+              "struct_hash": "0x88736f28d8b2ff6956d1539f6e9d5164c37b45ace476f9abb46bde2db6755bdb",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x7dcdd603581c252917b35a5da91dbe27d7f5bce9883e40e032fe543861207408"
+            },
+            "personal_sign_digest": "0x49f3dbff206445de960d311577350bf741ad5769428d265e8008faaa809b033f",
+            "signature": "0x6e5e6a6d44c9cbf4e784820718cd850e1e29f9139ad20abb666ac253380731486b6f13f176b7ed8b0821c24fa54e552c22e3331619b2327ddf3bf249b7d64ef91b",
+            "personal_signature": "0x0a435fd3554a9f186342aef8c327fbe7deba1c414fbc7a7bc0680ee3cd17c086470d70392d9ad502d4334d6d2fe98af45b67c3c1bf9e02fa071f4065f6a47e101b",
+            "v": 27
+          },
+          {
+            "id": "register_hashed_signing_key_unix_expiry",
+            "description": "legacy Register(bytes32 key,uint256 expiry) hashed-key variant",
+            "variant": "hashed_key",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "key_address": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "message": {
+              "key": "0x5ae9a32515e45403cc0fa7ea4781a3bb65c5dcc91bd16cbca8f635fd0a4dc021",
+              "expiry": "1893456000"
+            },
+            "eip712": {
+              "primary_type": "Register",
+              "type_string": "Register(bytes32 key,uint256 expiry)",
+              "type_hash": "0x43a8e81b3066f27fa29dabd007adc6851d6194353ec874cb462cf965ed0c4d15",
+              "struct_hash": "0x57672e5c072d93fc1181dc9f6a86d465c44d6fbf4e196690ea1331c664ca52b5",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0xfd187984cbcb84d68aae1194f02178dd4dc2fec37eaefbf2f8ddcfc6af09d6e6"
+            },
+            "personal_sign_digest": "0xb7e78cc52d57420e1b697b2aa2e13dd1e26bb96c53fbc1860520ce1675e56a27",
+            "signature": "0x60912932c3e8b56393a8087e45af2e51459a4102fb3a48b3972738bc680c148057d5c5b8c368ecd50dc8fcf1bda571d4a4dc1ae926743633fa5e01dbab5e0a671b",
+            "personal_signature": "0x6a6ef737f1564e326dda8b6fdd6a9fcd093f5e3fb837cba208a6b09228ec45a95fe8b9397a3e64278993543a1b6124dddee2c867d01a235437534af7d7ff6e111c",
+            "v": 27
+          }
+        ],
+        "sign_key": [
+          {
+            "id": "sign_key_wallet_account",
+            "description": "signing_key proves it can sign for the wallet account",
+            "signer_key": "signing_key",
+            "signer": "0x4919a51986CA4036066645799580f2655ED50C63",
+            "message": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27"
+            },
+            "eip712": {
+              "primary_type": "SignKey",
+              "type_string": "SignKey(address account)",
+              "type_hash": "0x2ff9e607f7eb3ff4057084887a1e540f46f1a773c72f756e09451eaf455c34fd",
+              "struct_hash": "0xd7029e13505bd0bccbe6f0b47f04eef31d1b9c52ba3d4ae5f6a19fdea310ab8b",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0xd960f37e4b078891428b2037edb38129bcee391b107792c4f4862b996098e109"
+            },
+            "signature": "0x1b72dba51dbf75397503a0bcbe004ce56e3591de62a9cb13716e87e0b26ac0145ec4dde4527d693b176b84e8b99cd973875b0609e2b81849ea709eb6aca25c901c",
+            "v": 28
+          },
+          {
+            "id": "other_sign_key_wallet_account",
+            "description": "alternate signing key proves it can sign for the wallet account",
+            "signer_key": "other_signing_key",
+            "signer": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+            "message": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27"
+            },
+            "eip712": {
+              "primary_type": "SignKey",
+              "type_string": "SignKey(address account)",
+              "type_hash": "0x2ff9e607f7eb3ff4057084887a1e540f46f1a773c72f756e09451eaf455c34fd",
+              "struct_hash": "0xd7029e13505bd0bccbe6f0b47f04eef31d1b9c52ba3d4ae5f6a19fdea310ab8b",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0xd960f37e4b078891428b2037edb38129bcee391b107792c4f4862b996098e109"
+            },
+            "signature": "0xb9fa29a0123631b6e0e9acc0f9e807bf28b9cb3e17f5e0d19846f8a0b1a3e1e84c47f353141980074aab652187cbccb7f4a90601230e922a33ae5655b4793a0a1c",
+            "v": 28
+          }
+        ],
+        "approve_builder": [
+          {
+            "id": "approve_builder_fee_0003",
+            "description": "approve builder-alpha with max fee rate 0.0003",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "message": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "builderId": "builder-alpha",
+              "maxFeeRate": "300",
+              "nonce": "1700000000123"
+            },
+            "eip712": {
+              "primary_type": "ApproveBuilder",
+              "type_string": "ApproveBuilder(address account,string builderId,uint256 maxFeeRate,uint256 nonce)",
+              "type_hash": "0x70abe623a64971179764f5f6610433e26b8f72e0c6d17a8a680ac914895487ec",
+              "struct_hash": "0xa69198273284e0f1ba60f9ed5eef8c1701680f25c52c7a82683579bf954e10dd",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0xb705ab03e5873253a6903d83955a47091685179207a06197051135273e49b92c"
+            },
+            "signature": "0x1330c719e81bdc85ce009922738ab730dd902eea9f04d871f1eb04cfbfabdbdb7643201b1dee18df6e475af8f5cc880672f9dc2ad87a0dae1940a3af739eebe81c",
+            "v": 28
+          },
+          {
+            "id": "approve_builder_zero_fee",
+            "description": "approve builder-zero with explicit zero max fee rate and zero nonce",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "message": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "builderId": "builder-zero",
+              "maxFeeRate": "0",
+              "nonce": "0"
+            },
+            "eip712": {
+              "primary_type": "ApproveBuilder",
+              "type_string": "ApproveBuilder(address account,string builderId,uint256 maxFeeRate,uint256 nonce)",
+              "type_hash": "0x70abe623a64971179764f5f6610433e26b8f72e0c6d17a8a680ac914895487ec",
+              "struct_hash": "0xfc869a24bfc8682d0798cb1593e4745760e44947d43b8fa3f1b4782d7ebd5dcc",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x70f774e65e30d9bfc00d4134bda298db191ac1dc6cf9d376f4cbc3071573ae53"
+            },
+            "signature": "0x59ef0d3e68a7f76bb5c3b252f920b76538d524de86f7f81305310e946555e3f4745c713b689466d4deab7924dc04efa522000ddf6b6eac295757548ca9684ef11c",
+            "v": 28
+          }
+        ],
+        "withdraw": [
+          {
+            "id": "withdraw_empty_data",
+            "description": "withdraw with empty raw data, which hashes to keccak256(\"\")",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "api": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "100000001",
+              "salt": "404",
+              "data": ""
+            },
+            "message": {
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "100000001",
+              "salt": "404",
+              "data": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+            },
+            "eip712": {
+              "primary_type": "Withdraw",
+              "type_string": "Withdraw(address collateral,address to,uint256 amount,uint256 salt,bytes32 data)",
+              "type_hash": "0x6dc4b9db376b4ac683b1d5f78bbed02b58ae61997e651ea0bc8885cb2e464788",
+              "struct_hash": "0xa37998e004ea07be259bb2a26c1ad0a6c9d42cae5f90648226a9d5f01400c117",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x916b7d1163cc27fa29c1d32d77ea6dd324419e0084a8b1ad7dbb3690465947eb"
+            },
+            "personal_sign_digest": "0x5817d7ca12c17cc8613d6d0f2bb339bc1875e0874403a8ddcd51b5b9105695d5",
+            "signature": "0xe99a10e9ee1f3e221b6b1071dc4e12d7c9fa59edff42a0942ef6061559ea9f232219d90b3f6bfc36e6f1afb74ce59b616a9a5fa27c4c7e1100dd75ef494971781c",
+            "personal_signature": "0x6cd0925555e089a62a0edef791c8d134d02f68d3d30c097c237b822068d10d81057a5bfd3a1d9a874650824879693534d508cc9384b0db7b59db452fc01ab7001b",
+            "v": 28
+          },
+          {
+            "id": "withdraw_recipient_data_max_salt",
+            "description": "withdraw with ABI-encoded recipient data and max uint256 salt",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "api": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "250000123456",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+              "data": "0000000000000000000000004919a51986ca4036066645799580f2655ed50c63",
+              "recipient": "0x4919a51986CA4036066645799580f2655ED50C63"
+            },
+            "message": {
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "250000123456",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+              "data": "0x9fafa1e3655c33614d606a2f545dfe70cf08127995c39a134a742c5397617ff9"
+            },
+            "eip712": {
+              "primary_type": "Withdraw",
+              "type_string": "Withdraw(address collateral,address to,uint256 amount,uint256 salt,bytes32 data)",
+              "type_hash": "0x6dc4b9db376b4ac683b1d5f78bbed02b58ae61997e651ea0bc8885cb2e464788",
+              "struct_hash": "0x2b011c3e27ac769cdc44f110266ca78689bdbc2c9d533f2d00b7f2b2ad48e5bd",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x5d92e3c3f09092da58d4a73709f71dac0f8efe00b6f47aee783ae9454a20039c"
+            },
+            "personal_sign_digest": "0x93681383265e65f4e07423eced5807c85e7438d5a9d34bc41bce6e850f762b5b",
+            "signature": "0xd341ad8ac19912dd7ffaf5bcaca9951af8e3670cb49ec07138a1bf60bd4555493500d8a0f0c41e55ab5d03aec25fa74c4d042751f97e856c1fe01935d83f1c1c1b",
+            "personal_signature": "0x76158753f3e510dcab6760fcdfbdd666d79810d6fedd07769eafd06b8057c9616d9e0dc7d10cd7fbe8e9961100e1335bf8b7611d46c2e74492be1a321bae40161b",
+            "v": 27
+          }
+        ],
+        "transfer": [
+          {
+            "id": "transfer_min_amount_zero_salt",
+            "description": "transfer with minimum non-zero 6-decimal amount and zero salt",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "api": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "1",
+              "salt": "0"
+            },
+            "message": {
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "1",
+              "salt": "0"
+            },
+            "eip712": {
+              "primary_type": "Transfer",
+              "type_string": "Transfer(address collateral,address to,uint256 amount,uint256 salt)",
+              "type_hash": "0xd917d91d369273eac4001f45349a5dbbd7d52c20c69862c6c4e83752d03d73d9",
+              "struct_hash": "0x3e6d5ae86bdc7751331c8b70969044103b0cce6e11c7ed314851450ddbac8236",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x125926d5f2683f73a2d1b0b217257147cae8d6eed038be7a8240abaf765d5d18"
+            },
+            "personal_sign_digest": "0xedec6359ead11fb6e3f413065b54e412ff154ff55a9068771d4dd7e18a716a77",
+            "signature": "0x9084ea65bf46ea4bb0742640cae868f75a0a8fef22ca4cd08e0ea6a6addaecb41c09265ae9a03d16cf8f7e59a99cee63eabd78475e678b958e1c531a76ec0b501b",
+            "personal_signature": "0x153447902d651c0915f59352e06ac6274d5dd0116794593408fbed1bd6dde61e6918d57be27ab9521618237c98149660c7bc0fab31df2f1b4d56c70eb31947951b",
+            "v": 27
+          },
+          {
+            "id": "transfer_large_amount_max_salt",
+            "description": "transfer with large raw amount and max uint256 salt",
+            "signer_key": "wallet",
+            "signer": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+            "api": {
+              "account": "0x7D19833b5aF3b4e4D75DBA556ded46930469FA27",
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "987654321123456",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+            },
+            "message": {
+              "collateral": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+              "to": "0xEB2E316a1112f40e7b3c9019BC19B6009eC661AF",
+              "amount": "987654321123456",
+              "salt": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+            },
+            "eip712": {
+              "primary_type": "Transfer",
+              "type_string": "Transfer(address collateral,address to,uint256 amount,uint256 salt)",
+              "type_hash": "0xd917d91d369273eac4001f45349a5dbbd7d52c20c69862c6c4e83752d03d73d9",
+              "struct_hash": "0x090f3a907793aa1bf4085e1f0ba6410200371ac1c3651e6bf9742ba7bfe3eab0",
+              "domain_separator": "0x30c073629d8bf03b436295d4ded682a22940796d7206014ffb285f106019df8d",
+              "digest": "0x41a2ba8c0dab7ea6ed3fb33d58edff792f19c23c7d0cc4986cbf9aa40ef657ae"
+            },
+            "personal_sign_digest": "0x2569e816ad1722276fb85112565f2cca1904b01b1dd4a7d0fa36b32e397aa5a4",
+            "signature": "0x9899a6ea82b68209c2e3f7503fc9a993935910073408338e8988861c6c01866018ff638c36875b9b0ecf4367c903c7c29f812960134e1853a2dca8bcf806e0451c",
+            "personal_signature": "0x0468b67f7fa1c07b6cad009759e171dd17b5aa20fa1080e0b1c34c8e1b6e50224414dc9da2115d237d6f268fd923c90949bfbb106f80999f3262731d7cc7b08a1b",
+            "v": 28
+          }
+        ]
+      }
+    }
+  ],
+  "hmac": {
+    "canonical_rule": "canonical string is key,timestamp_ns,method,path,body; REST uses r.URL.Path without query, websocket uses method ws and operation name as path",
+    "algorithm": "HMAC-SHA256 over the canonical string using the API secret, encoded as lowercase hex without 0x",
+    "rest": [
+      {
+        "id": "rest_get_with_query",
+        "description": "GET request where query parameters are present on the request target but excluded from the signed path",
+        "key": "aevo-sdk-vector-key",
+        "secret": "aevo-sdk-vector-secret",
+        "timestamp": "1767323045123456789",
+        "timestamp_units": "unix nanoseconds",
+        "timestamp_iso": "2026-01-02T03:04:05.123456789Z",
+        "method": "GET",
+        "request_target": "/orders?instrument_id=1\u0026limit=50",
+        "signed_path": "/orders",
+        "body": "",
+        "canonical_string": "aevo-sdk-vector-key,1767323045123456789,GET,/orders,",
+        "signature": "21e0eb70d5c33d4208f8e8430055bb4c0b22ceae08b7dbcc29b62495bd9318d7"
+      },
+      {
+        "id": "rest_post_json_body",
+        "description": "POST request with compact JSON body signed byte-for-byte",
+        "key": "aevo-sdk-vector-key",
+        "secret": "aevo-sdk-vector-secret",
+        "timestamp": "1770091506987654321",
+        "timestamp_units": "unix nanoseconds",
+        "timestamp_iso": "2026-02-03T04:05:06.987654321Z",
+        "method": "POST",
+        "request_target": "/orders",
+        "signed_path": "/orders",
+        "body": "{\"instrument\":1,\"amount\":\"1000000\",\"price\":\"2000000000\"}",
+        "canonical_string": "aevo-sdk-vector-key,1770091506987654321,POST,/orders,{\"instrument\":1,\"amount\":\"1000000\",\"price\":\"2000000000\"}",
+        "signature": "9ad253f3c5bc0b8b16668ade20c3e4c6566d488b6f5b6b44243789d2ba451b83"
+      },
+      {
+        "id": "rest_delete_no_body",
+        "description": "DELETE request with empty body and query excluded from signed path",
+        "key": "aevo-sdk-vector-key",
+        "secret": "aevo-sdk-vector-secret",
+        "timestamp": "1772600767111222333",
+        "timestamp_units": "unix nanoseconds",
+        "timestamp_iso": "2026-03-04T05:06:07.111222333Z",
+        "method": "DELETE",
+        "request_target": "/orders/0xabc123?reason=user",
+        "signed_path": "/orders/0xabc123",
+        "body": "",
+        "canonical_string": "aevo-sdk-vector-key,1772600767111222333,DELETE,/orders/0xabc123,",
+        "signature": "48296452b471a1eab6c519b77973a95ba3091e96301e9b8dbf62465300010473"
+      }
+    ],
+    "websocket": [
+      {
+        "id": "ws_request_auth_subscribe",
+        "description": "request-level websocket auth object on a subscribe operation",
+        "key": "aevo-sdk-vector-key",
+        "secret": "aevo-sdk-vector-secret",
+        "timestamp": "1775369228222333444",
+        "timestamp_units": "unix nanoseconds",
+        "timestamp_iso": "2026-04-05T06:07:08.222333444Z",
+        "method": "ws",
+        "request_target": "subscribe",
+        "signed_path": "subscribe",
+        "body": "[\"ticker:ETH-PERP\",\"fills\"]",
+        "canonical_string": "aevo-sdk-vector-key,1775369228222333444,ws,subscribe,[\"ticker:ETH-PERP\",\"fills\"]",
+        "signature": "e284bc45d364127b942891ee2cdf50f89d901102cc4097f0333ee020afa0db17"
+      },
+      {
+        "id": "ws_request_auth_create_order",
+        "description": "request-level websocket auth object on a create_order operation",
+        "key": "aevo-sdk-vector-key",
+        "secret": "aevo-sdk-vector-secret",
+        "timestamp": "1778051289333444555",
+        "timestamp_units": "unix nanoseconds",
+        "timestamp_iso": "2026-05-06T07:08:09.333444555Z",
+        "method": "ws",
+        "request_target": "create_order",
+        "signed_path": "create_order",
+        "body": "{\"maker\":\"0x0000000000000000000000000000000000000001\",\"instrument\":1}",
+        "canonical_string": "aevo-sdk-vector-key,1778051289333444555,ws,create_order,{\"maker\":\"0x0000000000000000000000000000000000000001\",\"instrument\":1}",
+        "signature": "193deb09e1a1037764ec0335421f2960664720b42ad234ded15df67949e6e404"
+      },
+      {
+        "id": "ws_one_off_auth_op",
+        "description": "one-off signed op:\"auth\" payload; backend signs an empty body for this mode",
+        "key": "aevo-sdk-vector-key",
+        "secret": "aevo-sdk-vector-secret",
+        "timestamp": "1780819750444555666",
+        "timestamp_units": "unix nanoseconds",
+        "timestamp_iso": "2026-06-07T08:09:10.444555666Z",
+        "method": "ws",
+        "request_target": "auth",
+        "signed_path": "auth",
+        "body": "",
+        "canonical_string": "aevo-sdk-vector-key,1780819750444555666,ws,auth,",
+        "signature": "b63fefdccf14cc84836cf2b5456fee6eac5a71d4107592b7eb4517a6442854a1"
+      }
+    ]
+  }
+}
