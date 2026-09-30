@@ -19,6 +19,7 @@ export {
   toRaw6
 } from "./units.js";
 export {
+  getApproveBuilderTypedData,
   hashWithdrawData,
   makeSalt,
   orderMessage,
@@ -32,11 +33,18 @@ export {
 } from "./signing.js";
 export type {
   AevoSigningDomain,
+  ApproveBuilderTypedData,
+  ApproveBuilderTypedDataMessage,
+  ApproveBuilderTypedDataParams,
+  Eip712DomainJson,
+  Eip712Field,
+  Eip712Types,
   Hex,
   OrderToSign,
   PersonalSigningResult,
   SigningResult
 } from "./signing.js";
+export type { ApproveBuilderSigner } from "./client.js";
 export { generateHmacSignature, pathWithoutQuery, unixTimestampNanoseconds } from "./auth.js";
 export type {
   AevoSuccess,

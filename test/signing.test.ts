@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { TypedDataEncoder, Wallet } from "ethers";
 import vectors from "./vectors/vectors.json";
 import {
+  AevoValueError,
   generateHmacSignature,
+  getApproveBuilderTypedData,
   signApproveBuilder,
   signOrder,
   signRegister,
@@ -12,6 +15,7 @@ import {
 
 type VectorKey = (typeof vectors.keys)[number];
 type Domain = (typeof vectors.domains)[number];
+type EthersTypes = Record<string, Array<{ name: string; type: string }>>;
 
 const EXPECTED_DOMAINS = ["mainnet", "testnet"];
 const EXPECTED_VECTOR_KINDS = [
@@ -25,6 +29,7 @@ const EXPECTED_VECTOR_KINDS = [
 ];
 
 const keys = new Map<string, VectorKey>(vectors.keys.map((key) => [key.id, key]));
+const walletAddressForVectors = keys.get("wallet")!.address;
 
 function key(id: string): string {
   const found = keys.get(id);
@@ -47,6 +52,24 @@ function rawRateToDecimal(raw: string): string {
 
 function domainId(domain: Domain): "mainnet" | "testnet" {
   return domain.id as "mainnet" | "testnet";
+}
+
+function ethersTypes(types: Record<string, readonly { name: string; type: string }[]>): EthersTypes {
+  return Object.fromEntries(
+    Object.entries(types)
+      .filter(([name]) => name !== "EIP712Domain")
+      .map(([name, fields]) => [name, [...fields]])
+  ) as EthersTypes;
+}
+
+function errorCode(fn: () => unknown): string | undefined {
+  try {
+    fn();
+  } catch (error) {
+    expect(error).toBeInstanceOf(AevoValueError);
+    return (error as AevoValueError).code;
+  }
+  throw new Error("expected an AevoValueError");
 }
 
 describe("vector fixture shape", () => {
@@ -140,6 +163,42 @@ describe("signing vectors", () => {
           expect(signed.digest).toBe(vector.eip712.digest);
           expect(signed.signature).toBe(vector.signature);
         });
+
+        it(`builds approve-builder typed data ${vector.id}`, async () => {
+          const typedData = getApproveBuilderTypedData({
+            env: domainId(domain),
+            account: vector.message.account,
+            builderId: vector.message.builderId,
+            maxFeeRate: rawRateToDecimal(vector.message.maxFeeRate),
+            nonce: vector.message.nonce
+          });
+          const types = ethersTypes(typedData.types);
+
+          expect(typedData.primaryType).toBe("ApproveBuilder");
+          expect(typedData.message).toEqual(vector.message);
+          expect(TypedDataEncoder.hash(typedData.domain, types, typedData.message)).toBe(
+            vector.eip712.digest
+          );
+          await expect(new Wallet(key(vector.signer_key)).signTypedData(typedData.domain, types, typedData.message))
+            .resolves.toBe(vector.signature);
+
+          const ethSignTypedDataV4 = getApproveBuilderTypedData({
+            env: domainId(domain),
+            account: vector.message.account,
+            builderId: vector.message.builderId,
+            maxFeeRate: rawRateToDecimal(vector.message.maxFeeRate),
+            nonce: vector.message.nonce,
+            includeEip712Domain: true
+          });
+          expect(ethSignTypedDataV4.types.EIP712Domain).toEqual([
+            { name: "name", type: "string" },
+            { name: "version", type: "string" },
+            { name: "chainId", type: "uint256" }
+          ]);
+          expect(TypedDataEncoder.hash(ethSignTypedDataV4.domain, ethersTypes(ethSignTypedDataV4.types), ethSignTypedDataV4.message)).toBe(
+            vector.eip712.digest
+          );
+        });
       }
 
       for (const vector of domain.vectors.withdraw) {
@@ -167,6 +226,41 @@ describe("signing vectors", () => {
       }
     });
   }
+});
+
+describe("approve-builder typed data validation", () => {
+  it("reports AevoValueError codes for bad inputs", () => {
+    expect(
+      errorCode(() =>
+        getApproveBuilderTypedData({
+          env: "testnet",
+          account: walletAddressForVectors,
+          builderId: "builder-alpha",
+          maxFeeRate: 0.1 as unknown as string
+        })
+      )
+    ).toBe("UNSAFE_NUMBER");
+    expect(
+      errorCode(() =>
+        getApproveBuilderTypedData({
+          env: "testnet",
+          account: walletAddressForVectors,
+          builderId: "builder-alpha",
+          maxFeeRate: "0.0000001"
+        })
+      )
+    ).toBe("TOO_MANY_DECIMALS");
+    expect(
+      errorCode(() =>
+        getApproveBuilderTypedData({
+          env: "testnet",
+          account: undefined as unknown as string,
+          builderId: "builder-alpha",
+          maxFeeRate: "0.0003"
+        })
+      )
+    ).toBe("MISSING_CREDENTIALS");
+  });
 });
 
 describe("HMAC vectors", () => {
