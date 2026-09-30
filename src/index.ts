@@ -44,7 +44,12 @@ export type {
   PersonalSigningResult,
   SigningResult
 } from "./signing.js";
-export type { ApproveBuilderSigner } from "./client.js";
+export type {
+  ApproveBuilderSigner,
+  EthersTypedDataSigner,
+  ViemSignTypedDataArgs,
+  ViemTypedDataSigner
+} from "./client.js";
 export { generateHmacSignature, pathWithoutQuery, unixTimestampNanoseconds } from "./auth.js";
 export type {
   AevoSuccess,

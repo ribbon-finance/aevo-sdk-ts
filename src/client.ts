@@ -1,4 +1,5 @@
 import { Wallet, getAddress } from "ethers";
+import type { TypedDataDomain, TypedDataField } from "ethers";
 import type { AevoClientOptions } from "./config.js";
 import { environmentConfig } from "./config.js";
 import { generateHmacSignature, unixTimestampNanoseconds } from "./auth.js";
@@ -39,13 +40,33 @@ import { normalizeDecimal6, oneOfRateOrBps } from "./units.js";
 type QueryValue = string | number | bigint | boolean | undefined | null;
 type QueryParams = Record<string, QueryValue>;
 type Body = object;
+type EthersTypedDataTypes = Record<string, TypedDataField[]>;
+type ViemTypedDataAccount = string | { address?: string };
 
-export interface ApproveBuilderSigner {
-  signTypedData: (...args: unknown[]) => MaybePromise<string>;
+export interface EthersTypedDataSigner {
+  signTypedData(
+    domain: TypedDataDomain,
+    types: EthersTypedDataTypes,
+    value: Record<string, any>
+  ): Promise<string>;
   getAddress?: () => MaybePromise<string>;
   address?: string;
-  account?: string | { address?: string };
 }
+
+export interface ViemSignTypedDataArgs {
+  account?: ViemTypedDataAccount;
+  domain: ApproveBuilderTypedData["domain"];
+  types: ApproveBuilderTypedData["types"];
+  primaryType: string;
+  message: ApproveBuilderTypedData["message"];
+}
+
+export interface ViemTypedDataSigner {
+  signTypedData(args: ViemSignTypedDataArgs): Promise<Hex>;
+  account?: ViemTypedDataAccount;
+}
+
+export type ApproveBuilderSigner = EthersTypedDataSigner | ViemTypedDataSigner;
 
 function requireFetch(fetchImpl?: FetchLike): FetchLike {
   if (fetchImpl !== undefined) {
@@ -133,14 +154,26 @@ function accountAddress(account: unknown): string | undefined {
   return undefined;
 }
 
+function hasGetAddress(signer: ApproveBuilderSigner): signer is ApproveBuilderSigner & {
+  getAddress: () => MaybePromise<string>;
+} {
+  return "getAddress" in signer && typeof signer.getAddress === "function";
+}
+
+function isEthersTypedDataSigner(signer: ApproveBuilderSigner): signer is EthersTypedDataSigner {
+  return signer.signTypedData.length >= 3;
+}
+
 async function signerAccount(signer: ApproveBuilderSigner, account?: string): Promise<string> {
   if (account !== undefined) {
     return normalizeAccount(account);
   }
-  if (typeof signer.getAddress === "function") {
+  if (hasGetAddress(signer)) {
     return normalizeAccount(await signer.getAddress());
   }
-  const address = accountAddress(signer.address) ?? accountAddress(signer.account);
+  const address =
+    ("address" in signer ? accountAddress(signer.address) : undefined) ??
+    ("account" in signer ? accountAddress(signer.account) : undefined);
   if (address !== undefined) {
     return normalizeAccount(address);
   }
@@ -154,10 +187,9 @@ async function signApproveBuilderTypedData(
   if (typeof signer.signTypedData !== "function") {
     throw new AevoValueError("INVALID_ARGUMENT", "signer.signTypedData is required");
   }
-  const signature =
-    signer.signTypedData.length >= 3
-      ? await signer.signTypedData(typedData.domain, typedData.types, typedData.message)
-      : await signer.signTypedData(typedData);
+  const signature = isEthersTypedDataSigner(signer)
+    ? await signer.signTypedData(typedData.domain, typedData.types as EthersTypedDataTypes, typedData.message)
+    : await signer.signTypedData(typedData);
   return signature as Hex;
 }
 
