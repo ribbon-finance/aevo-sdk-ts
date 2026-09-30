@@ -100,7 +100,7 @@ Authenticated:
 
 Builder:
 
-`registerBuilder`, `updateBuilderProfile`, `approveBuilder`, `revokeBuilder`, `builderApprovals`, `builderApproval`, `builderStats`, `builderMarkets`, `builderUsers`, `builderFills`, `downloadBuilderFillsCsv`.
+`registerBuilder`, `updateBuilderProfile`, `approveBuilder`, `approveBuilderWithSigner`, `submitApproveBuilder`, `revokeBuilder`, `builderApprovals`, `builderApproval`, `builderStats`, `builderMarkets`, `builderUsers`, `builderFills`, `downloadBuilderFillsCsv`.
 
 ## Builder Orders
 
@@ -123,6 +123,88 @@ await aevo.createOrder({
 ```
 
 Builder order signatures include `builderId` and raw `builderFeeRate` exactly as the backend expects.
+
+## Builder Approval In A Web App
+
+Browser wallets can approve a builder by signing the same EIP-712 `ApproveBuilder` typed data the SDK uses internally. Once the backend optional-API-key change is live, no Aevo-hosted approval page or API key is needed when you submit `account` with the wallet signature.
+
+Wagmi and viem use the default `types` shape without `EIP712Domain`:
+
+```ts
+import { AevoClient, bpsToRate, getApproveBuilderTypedData } from "@aevo/sdk";
+import { useAccount, useSignTypedData } from "wagmi";
+
+const aevo = new AevoClient({ env: "testnet" });
+const builderId = "builder_0123456789abcdef";
+const maxFeeBps = "5";
+const { address } = useAccount();
+const { signTypedDataAsync } = useSignTypedData();
+
+const typedData = getApproveBuilderTypedData({
+  env: "testnet",
+  account: address!,
+  builderId,
+  maxFeeBps
+});
+
+const signature = await signTypedDataAsync(typedData);
+
+await aevo.submitApproveBuilder({
+  builderId,
+  maxFeeRate: bpsToRate(maxFeeBps),
+  nonce: typedData.message.nonce,
+  signature,
+  account: address!
+});
+```
+
+With a viem wallet client, sign the same object with the selected account:
+
+```ts
+const [account] = await walletClient.getAddresses();
+const typedData = getApproveBuilderTypedData({
+  env: "testnet",
+  account,
+  builderId,
+  maxFeeBps: "5"
+});
+const signature = await walletClient.signTypedData({ account, ...typedData });
+```
+
+For ethers v6, pass a browser signer directly:
+
+```ts
+import { AevoClient } from "@aevo/sdk";
+import { BrowserProvider } from "ethers";
+
+const aevo = new AevoClient({ env: "testnet" });
+const provider = new BrowserProvider(window.ethereum);
+const signer = await provider.getSigner();
+
+await aevo.approveBuilderWithSigner(signer, {
+  builderId: "builder_0123456789abcdef",
+  maxFeeBps: "5"
+});
+```
+
+`typedData.message.maxFeeRate` is the raw 6-decimal integer used for signing, for example `"500"` for 5 bps. `submitApproveBuilder` sends the decimal API value, for example `"0.0005"`.
+
+For raw `eth_signTypedData_v4`, include the domain type:
+
+```ts
+const typedData = getApproveBuilderTypedData({
+  env: "testnet",
+  account,
+  builderId,
+  maxFeeBps: "5",
+  includeEip712Domain: true
+});
+
+const signature = await ethereum.request({
+  method: "eth_signTypedData_v4",
+  params: [account, JSON.stringify(typedData)]
+});
+```
 
 ## WebSocket
 

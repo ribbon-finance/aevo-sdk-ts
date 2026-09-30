@@ -1,17 +1,21 @@
 import { Wallet, getAddress } from "ethers";
+import type { TypedDataDomain, TypedDataField } from "ethers";
 import type { AevoClientOptions } from "./config.js";
 import { environmentConfig } from "./config.js";
 import { generateHmacSignature, unixTimestampNanoseconds } from "./auth.js";
 import { AevoApiError, AevoValueError } from "./errors.js";
 import { createSignedOrderPayload as buildSignedOrderPayload } from "./orderPayload.js";
 import {
+  getApproveBuilderTypedData,
   makeSalt,
   signApproveBuilder,
   signRegister,
   signSignKey,
   signTransfer,
   signWithdraw,
-  walletAddress
+  walletAddress,
+  type ApproveBuilderTypedData,
+  type Hex
 } from "./signing.js";
 import type {
   AevoSuccess,
@@ -23,6 +27,7 @@ import type {
   CreateOrderParams,
   FetchLike,
   JsonValue,
+  MaybePromise,
   OrderResponse,
   PublicMarket,
   RegisterResponse,
@@ -30,11 +35,38 @@ import type {
   TransferParams,
   WithdrawParams
 } from "./types.js";
-import { oneOfRateOrBps } from "./units.js";
+import { normalizeDecimal6, oneOfRateOrBps } from "./units.js";
 
 type QueryValue = string | number | bigint | boolean | undefined | null;
 type QueryParams = Record<string, QueryValue>;
 type Body = object;
+type EthersTypedDataTypes = Record<string, TypedDataField[]>;
+type ViemTypedDataAccount = string | { address?: string };
+
+export interface EthersTypedDataSigner {
+  signTypedData(
+    domain: TypedDataDomain,
+    types: EthersTypedDataTypes,
+    value: Record<string, any>
+  ): Promise<string>;
+  getAddress?: () => MaybePromise<string>;
+  address?: string;
+}
+
+export interface ViemSignTypedDataArgs {
+  account?: ViemTypedDataAccount;
+  domain: ApproveBuilderTypedData["domain"];
+  types: ApproveBuilderTypedData["types"];
+  primaryType: string;
+  message: ApproveBuilderTypedData["message"];
+}
+
+export interface ViemTypedDataSigner {
+  signTypedData(args: ViemSignTypedDataArgs): Promise<Hex>;
+  account?: ViemTypedDataAccount;
+}
+
+export type ApproveBuilderSigner = EthersTypedDataSigner | ViemTypedDataSigner;
 
 function requireFetch(fetchImpl?: FetchLike): FetchLike {
   if (fetchImpl !== undefined) {
@@ -84,6 +116,81 @@ function bodyMessage(body: unknown, fallback: string): string {
     }
   }
   return fallback;
+}
+
+function uintString(value: string | number | bigint, name: string): string {
+  if (typeof value === "number") {
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw new AevoValueError("UNSAFE_NUMBER", `${name} must be a non-negative safe integer`);
+    }
+    return String(value);
+  }
+  const text = value.toString();
+  if (!/^(0|[1-9][0-9]*)$/.test(text)) {
+    throw new AevoValueError("INVALID_ARGUMENT", `${name} must be a non-negative integer`);
+  }
+  return text;
+}
+
+function requireString(value: unknown, name: string, code: "INVALID_ARGUMENT" | "MISSING_CREDENTIALS"): string {
+  if (typeof value !== "string" || value === "") {
+    throw new AevoValueError(code, `${name} is required`);
+  }
+  return value;
+}
+
+function normalizeAccount(account: unknown): string {
+  return getAddress(requireString(account, "account", "MISSING_CREDENTIALS"));
+}
+
+function accountAddress(account: unknown): string | undefined {
+  if (typeof account === "string") {
+    return account;
+  }
+  if (account !== null && typeof account === "object") {
+    const address = (account as { address?: unknown }).address;
+    return typeof address === "string" ? address : undefined;
+  }
+  return undefined;
+}
+
+function hasGetAddress(signer: ApproveBuilderSigner): signer is ApproveBuilderSigner & {
+  getAddress: () => MaybePromise<string>;
+} {
+  return "getAddress" in signer && typeof signer.getAddress === "function";
+}
+
+function isEthersTypedDataSigner(signer: ApproveBuilderSigner): signer is EthersTypedDataSigner {
+  return signer.signTypedData.length >= 3;
+}
+
+async function signerAccount(signer: ApproveBuilderSigner, account?: string): Promise<string> {
+  if (account !== undefined) {
+    return normalizeAccount(account);
+  }
+  if (hasGetAddress(signer)) {
+    return normalizeAccount(await signer.getAddress());
+  }
+  const address =
+    ("address" in signer ? accountAddress(signer.address) : undefined) ??
+    ("account" in signer ? accountAddress(signer.account) : undefined);
+  if (address !== undefined) {
+    return normalizeAccount(address);
+  }
+  throw new AevoValueError("MISSING_CREDENTIALS", "account is required");
+}
+
+async function signApproveBuilderTypedData(
+  signer: ApproveBuilderSigner,
+  typedData: ApproveBuilderTypedData
+): Promise<Hex> {
+  if (typeof signer.signTypedData !== "function") {
+    throw new AevoValueError("INVALID_ARGUMENT", "signer.signTypedData is required");
+  }
+  const signature = isEthersTypedDataSigner(signer)
+    ? await signer.signTypedData(typedData.domain, typedData.types as EthersTypedDataTypes, typedData.message)
+    : await signer.signTypedData(typedData);
+  return signature as Hex;
 }
 
 export class AevoClient {
@@ -317,14 +424,69 @@ export class AevoClient {
       maxFeeRate,
       nonce
     });
+    return this.submitApproveBuilder({
+      builderId: params.builderId,
+      maxFeeRate,
+      nonce,
+      signature: signed.signature,
+      account
+    });
+  }
+
+  async submitApproveBuilder(params: {
+    builderId: string;
+    maxFeeRate: string;
+    nonce: string | number | bigint;
+    signature: string;
+    account: string;
+  }): Promise<AevoSuccess> {
+    const builderId = requireString(params.builderId, "builderId", "INVALID_ARGUMENT");
+    const signature = requireString(params.signature, "signature", "INVALID_ARGUMENT");
+    const account = normalizeAccount(params.account);
+    const maxFeeRate = normalizeDecimal6(params.maxFeeRate, "maxFee");
+    const nonce = uintString(params.nonce, "nonce");
     return this.request("POST", "/builder/approve", {
-      auth: true,
+      auth: this.hasApiCredentials(),
       body: {
-        builder_id: params.builderId,
+        builder_id: builderId,
         max_fee_rate: maxFeeRate,
-        nonce: nonce.toString(),
-        signature: signed.signature
+        nonce,
+        signature,
+        account
       }
+    });
+  }
+
+  async approveBuilderWithSigner(
+    signer: ApproveBuilderSigner,
+    params: {
+      builderId: string;
+      maxFeeRate?: string;
+      maxFeeBps?: string;
+      nonce?: string | number | bigint;
+      account?: string;
+    }
+  ): Promise<AevoSuccess> {
+    const account = await signerAccount(signer, params.account);
+    const maxFeeRate = oneOfRateOrBps({
+      rate: params.maxFeeRate,
+      bps: params.maxFeeBps,
+      fieldName: "maxFee"
+    });
+    const typedData = getApproveBuilderTypedData({
+      env: this.env,
+      account,
+      builderId: params.builderId,
+      maxFeeRate,
+      ...(params.nonce !== undefined ? { nonce: params.nonce } : {})
+    });
+    const signature = await signApproveBuilderTypedData(signer, typedData);
+    return this.submitApproveBuilder({
+      builderId: params.builderId,
+      maxFeeRate,
+      nonce: typedData.message.nonce,
+      signature,
+      account
     });
   }
 
@@ -425,6 +587,10 @@ export class AevoClient {
       throw new AevoValueError("MISSING_CREDENTIALS", "apiKey and apiSecret are required");
     }
     return { key: this.apiKey, secret: this.apiSecret };
+  }
+
+  private hasApiCredentials(): boolean {
+    return this.apiKey !== undefined && this.apiSecret !== undefined;
   }
 
   private async request<T = JsonValue>(

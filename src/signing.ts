@@ -12,7 +12,7 @@ import {
 import type { AevoEnv } from "./config.js";
 import { environmentConfig } from "./config.js";
 import { AevoValueError } from "./errors.js";
-import { rateToRaw } from "./units.js";
+import { oneOfRateOrBps, rateToRaw } from "./units.js";
 
 export type Hex = `0x${string}`;
 
@@ -32,6 +32,45 @@ export interface AevoSigningDomain {
   name: string;
   version: "1";
   chainId: string | number | bigint;
+}
+
+export interface Eip712DomainJson {
+  name: string;
+  version: "1";
+  chainId: string | number;
+}
+
+export interface Eip712Field {
+  name: string;
+  type: string;
+}
+
+export type Eip712Types = Record<string, readonly Eip712Field[]>;
+
+export interface ApproveBuilderTypedDataMessage {
+  [key: string]: string;
+  account: string;
+  builderId: string;
+  maxFeeRate: string;
+  nonce: string;
+}
+
+export interface ApproveBuilderTypedData {
+  domain: Eip712DomainJson;
+  types: Eip712Types;
+  primaryType: "ApproveBuilder";
+  message: ApproveBuilderTypedDataMessage;
+}
+
+export interface ApproveBuilderTypedDataParams {
+  env?: AevoEnv;
+  domain?: AevoSigningDomain;
+  account: string;
+  builderId: string;
+  maxFeeRate?: string;
+  maxFeeBps?: string;
+  nonce?: string | number | bigint;
+  includeEip712Domain?: boolean;
 }
 
 const ORDER_TYPES = {
@@ -72,6 +111,12 @@ const SIGN_KEY_TYPES = {
   SignKey: [{ name: "account", type: "address" }]
 } as const;
 
+const EIP712_DOMAIN_TYPES = [
+  { name: "name", type: "string" },
+  { name: "version", type: "string" },
+  { name: "chainId", type: "uint256" }
+] as const;
+
 const APPROVE_BUILDER_TYPES = {
   ApproveBuilder: [
     { name: "account", type: "address" },
@@ -107,11 +152,32 @@ function domainFor(envOrDomain: AevoEnv | AevoSigningDomain): AevoSigningDomain 
   return envOrDomain;
 }
 
+function domainFromParams(params: { env?: AevoEnv; domain?: AevoSigningDomain }): AevoSigningDomain {
+  if ((params.env === undefined) === (params.domain === undefined)) {
+    throw new AevoValueError("INVALID_ARGUMENT", "pass either env or domain, not both");
+  }
+  return params.domain ?? environmentConfig(params.env as AevoEnv).signingDomain;
+}
+
 function normalizeDomain(domain: AevoSigningDomain) {
   return {
     name: domain.name,
     version: domain.version,
     chainId: BigInt(domain.chainId)
+  };
+}
+
+function jsonChainId(chainId: string | number | bigint): string | number {
+  const text = uintString(chainId, "chainId");
+  const value = BigInt(text);
+  return value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(text) : text;
+}
+
+function jsonDomain(domain: AevoSigningDomain): Eip712DomainJson {
+  return {
+    name: domain.name,
+    version: domain.version,
+    chainId: jsonChainId(domain.chainId)
   };
 }
 
@@ -173,6 +239,27 @@ function uintString(value: string | number | bigint, name: string): string {
 
 function randomSalt(): string {
   return BigInt(hexlify(randomBytes(16))).toString();
+}
+
+function requireString(value: unknown, name: string, code: "INVALID_ARGUMENT" | "MISSING_CREDENTIALS"): string {
+  if (typeof value !== "string" || value === "") {
+    throw new AevoValueError(code, `${name} is required`);
+  }
+  return value;
+}
+
+function approveBuilderMessage(input: {
+  account: string;
+  builderId: string;
+  maxFeeRate: string;
+  nonce: string | number | bigint;
+}): ApproveBuilderTypedDataMessage {
+  return {
+    account: getAddress(requireString(input.account, "account", "MISSING_CREDENTIALS")),
+    builderId: requireString(input.builderId, "builderId", "INVALID_ARGUMENT"),
+    maxFeeRate: rateToRaw(input.maxFeeRate),
+    nonce: uintString(input.nonce, "nonce")
+  };
 }
 
 export interface OrderToSign {
@@ -257,15 +344,34 @@ export function signApproveBuilder(
     maxFeeRate: string;
     nonce: string | number | bigint;
   }
-): SigningResult<Record<string, unknown>> {
-  const message = {
-    account: getAddress(input.account),
-    builderId: input.builderId,
-    maxFeeRate: rateToRaw(input.maxFeeRate),
-    nonce: uintString(input.nonce, "nonce")
-  };
+): SigningResult<ApproveBuilderTypedDataMessage> {
+  const message = approveBuilderMessage(input);
   const digest = typedDigest(envOrDomain, APPROVE_BUILDER_TYPES, message);
   return withSignature(walletPrivateKey, digest, message);
+}
+
+export function getApproveBuilderTypedData(params: ApproveBuilderTypedDataParams): ApproveBuilderTypedData {
+  const domain = domainFromParams(params);
+  const maxFeeRate = oneOfRateOrBps({
+    rate: params.maxFeeRate,
+    bps: params.maxFeeBps,
+    fieldName: "maxFee"
+  });
+  const message = approveBuilderMessage({
+    account: params.account,
+    builderId: params.builderId,
+    maxFeeRate,
+    nonce: params.nonce ?? Date.now()
+  });
+  return {
+    domain: jsonDomain(domain),
+    types:
+      params.includeEip712Domain === true
+        ? { EIP712Domain: EIP712_DOMAIN_TYPES, ...APPROVE_BUILDER_TYPES }
+        : APPROVE_BUILDER_TYPES,
+    primaryType: "ApproveBuilder",
+    message
+  };
 }
 
 export function hashWithdrawData(data?: string | Uint8Array): Hex {

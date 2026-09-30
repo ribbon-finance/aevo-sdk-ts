@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import vectors from "./vectors/vectors.json";
 import { AevoApiError, AevoClient, generateHmacSignature } from "../src/index.js";
+import type { ApproveBuilderSigner } from "../src/index.js";
 
 interface FetchCall {
   url: string;
@@ -215,7 +216,8 @@ describe("REST client", () => {
       builder_id: approveVector.message.builderId,
       max_fee_rate: "0.0003",
       nonce: approveVector.message.nonce,
-      signature: approveVector.signature
+      signature: approveVector.signature,
+      account: wallet.address
     });
     expect(parseBody(calls[2]!)).toMatchObject({
       account: wallet.address,
@@ -253,6 +255,181 @@ describe("REST client", () => {
       generateHmacSignature({ key: "key", secret: "secret", timestamp, method: "GET", path: "/account" })
         .signature
     );
+  });
+
+  it("submits builder approval with account and optional API auth", async () => {
+    const authed = jsonFetch({ success: true });
+    const authedClient = new AevoClient({
+      env: "mainnet",
+      fetch: authed.fetch,
+      baseUrl: "https://example.test",
+      apiKey: "key",
+      apiSecret: "secret"
+    });
+    await authedClient.submitApproveBuilder({
+      builderId: approveVector.message.builderId,
+      maxFeeRate: "0.000300",
+      nonce: approveVector.message.nonce,
+      signature: approveVector.signature,
+      account: wallet.address
+    });
+
+    expect(authed.calls.map((call) => [call.init?.method, new URL(call.url).pathname])).toEqual([
+      ["POST", "/builder/approve"]
+    ]);
+    expect(parseBody(authed.calls[0]!)).toEqual({
+      builder_id: approveVector.message.builderId,
+      max_fee_rate: "0.0003",
+      nonce: approveVector.message.nonce,
+      signature: approveVector.signature,
+      account: wallet.address
+    });
+    expect(authed.calls[0]!.init?.headers).toMatchObject({
+      "AEVO-KEY": "key",
+      "AEVO-SECRET": "secret"
+    });
+
+    const unsigned = jsonFetch({ success: true });
+    const unsignedClient = new AevoClient({
+      env: "mainnet",
+      fetch: unsigned.fetch,
+      baseUrl: "https://example.test"
+    });
+    await unsignedClient.submitApproveBuilder({
+      builderId: approveVector.message.builderId,
+      maxFeeRate: "0.0003",
+      nonce: approveVector.message.nonce,
+      signature: approveVector.signature,
+      account: wallet.address
+    });
+
+    expect(parseBody(unsigned.calls[0]!)).toEqual({
+      builder_id: approveVector.message.builderId,
+      max_fee_rate: "0.0003",
+      nonce: approveVector.message.nonce,
+      signature: approveVector.signature,
+      account: wallet.address
+    });
+    expect(unsigned.calls[0]!.init?.headers).not.toMatchObject({
+      "AEVO-KEY": expect.any(String),
+      "AEVO-SECRET": expect.any(String)
+    });
+  });
+
+  it("approves builder with ethers-style and viem-style signers", async () => {
+    const ethersFetch = jsonFetch({ success: true });
+    const ethersClient = new AevoClient({
+      env: "mainnet",
+      fetch: ethersFetch.fetch,
+      baseUrl: "https://example.test"
+    });
+    let ethersSignCalls = 0;
+    const ethersSigner = {
+      getAddress: async () => wallet.address,
+      signTypedData: async (domain: unknown, types: unknown, message: unknown) => {
+        ethersSignCalls += 1;
+        expect(domain).toEqual({ name: "Aevo Mainnet", version: "1", chainId: 1 });
+        expect(types).toEqual({
+          ApproveBuilder: [
+            { name: "account", type: "address" },
+            { name: "builderId", type: "string" },
+            { name: "maxFeeRate", type: "uint256" },
+            { name: "nonce", type: "uint256" }
+          ]
+        });
+        expect(message).toEqual(approveVector.message);
+        return approveVector.signature;
+      }
+    } satisfies ApproveBuilderSigner;
+
+    await ethersClient.approveBuilderWithSigner(ethersSigner, {
+      builderId: approveVector.message.builderId,
+      maxFeeRate: "0.0003",
+      nonce: approveVector.message.nonce
+    });
+
+    expect(ethersSignCalls).toBe(1);
+    expect(parseBody(ethersFetch.calls[0]!)).toEqual({
+      builder_id: approveVector.message.builderId,
+      max_fee_rate: "0.0003",
+      nonce: approveVector.message.nonce,
+      signature: approveVector.signature,
+      account: wallet.address
+    });
+
+    const viemFetch = jsonFetch({ success: true });
+    const viemClient = new AevoClient({
+      env: "mainnet",
+      fetch: viemFetch.fetch,
+      baseUrl: "https://example.test"
+    });
+    let viemSignCalls = 0;
+    const viemSigner = {
+      account: { address: wallet.address },
+      signTypedData: async (typedData: unknown) => {
+        viemSignCalls += 1;
+        expect(typedData).toEqual({
+          domain: { name: "Aevo Mainnet", version: "1", chainId: 1 },
+          types: {
+            ApproveBuilder: [
+              { name: "account", type: "address" },
+              { name: "builderId", type: "string" },
+              { name: "maxFeeRate", type: "uint256" },
+              { name: "nonce", type: "uint256" }
+            ]
+          },
+          primaryType: "ApproveBuilder",
+          message: approveVector.message
+        });
+        return approveVector.signature;
+      }
+    } satisfies ApproveBuilderSigner;
+
+    await viemClient.approveBuilderWithSigner(viemSigner, {
+      builderId: approveVector.message.builderId,
+      maxFeeBps: "3",
+      nonce: approveVector.message.nonce
+    });
+
+    expect(viemSignCalls).toBe(1);
+    expect(parseBody(viemFetch.calls[0]!)).toEqual({
+      builder_id: approveVector.message.builderId,
+      max_fee_rate: "0.0003",
+      nonce: approveVector.message.nonce,
+      signature: approveVector.signature,
+      account: wallet.address
+    });
+  });
+
+  it("reports AevoValueError codes for bad builder approval inputs", async () => {
+    const client = new AevoClient({ env: "testnet", fetch: jsonFetch().fetch, baseUrl: "https://example.test" });
+    await expect(
+      client.submitApproveBuilder({
+        builderId: approveVector.message.builderId,
+        maxFeeRate: 0.1 as unknown as string,
+        nonce: approveVector.message.nonce,
+        signature: approveVector.signature,
+        account: wallet.address
+      })
+    ).rejects.toMatchObject({ code: "UNSAFE_NUMBER" });
+    await expect(
+      client.submitApproveBuilder({
+        builderId: approveVector.message.builderId,
+        maxFeeRate: "0.0000001",
+        nonce: approveVector.message.nonce,
+        signature: approveVector.signature,
+        account: wallet.address
+      })
+    ).rejects.toMatchObject({ code: "TOO_MANY_DECIMALS" });
+    await expect(
+      client.submitApproveBuilder({
+        builderId: approveVector.message.builderId,
+        maxFeeRate: "0.0003",
+        nonce: approveVector.message.nonce,
+        signature: approveVector.signature,
+        account: undefined as unknown as string
+      })
+    ).rejects.toMatchObject({ code: "MISSING_CREDENTIALS" });
   });
 
   it("maps non-2xx responses to AevoApiError", async () => {
